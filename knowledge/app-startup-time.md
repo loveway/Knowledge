@@ -8,7 +8,7 @@ iOS 的启动一般分为两大类：冷启动、热启动。
 ###### 关于 NSUserDefaults
 当系统调用 `[[NSUserDefaults standardUserDefaults] setObject:@"" forKey:@""]` 后系统会为用户在沙盒下的 `Libray/Preferences` 目录下创建`plist` 文件，文件名为当前应用的 `Bundle Identifier` 即 `[[NSBundle mainBundle] bundleIdentifier]` 用户可以通过 `NSUserDefaults` 接口的参数获取到该文件夹下的数据.
 
-![NSUserDefaults-path](../image/NSUserDefaults-path)
+![](https://github.com/loveway/iOS-Knowledge/blob/master/image/NSUserDefaults-path.png?raw=true)
 
 
 关于沙盒和数据存储可以参考：
