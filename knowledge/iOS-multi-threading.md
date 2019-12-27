@@ -85,5 +85,112 @@ OS 中的多线程的解决方案分别是：pthread，NSThread，GCD， NSOpera
 
 GCD 是比较底层的封装，我们知道较低层的代码一般性能都是比较高的，相对于NSOperationQueue。所以追求性能，而功能够用的话就可以考虑使用GCD。如果异步操作的过程需要更多的用户交互和被UI显示出来，NSOperationQueue 会是一个好选择。如果任务之间没有什么依赖关系，而是需要更高的并发能力，GCD 则更有优势。
 
+## pthread
+```objc
+#import <pthread.h>
+
+// 1. 创建线程: 定义一个pthread_t类型变量
+pthread_t thread;
+// 2. 开启线程: 执行任务
+pthread_create(&thread, NULL, run, NULL);
+// 3. 设置子线程的状态设置为 detached，该线程运行结束后会自动释放所有资源
+pthread_detach(thread);
+
+void *run(void *params) {
+    NSLog(@"%@", [NSThread currentThread]);
+    return NULL;
+}
+```
+输出
+```objc
+OC_test[96204:2452609] <NSThread: 0x6000000a6b80>{number = 7, name = (null)}
+```
+一些其他用法
+
+| func | description |
+| :------- |:-------|
+| `pthread_create()` | 创建一个线程 |
+| `pthread_cancel()` | 中断另外一个线程的运行 |
+| `pthread_join()`   | 阻塞当前的线程，直到另外一个线程运行结束|
+| `pthread_attr_init()` |初始化线程的属性|
+| `pthread_attr_setdetachstate()` |设置脱离状态的属性（决定这个线程在终止时是否可以被结合）|
+| `pthread_attr_getdetachstate()` |获取脱离状态的属性|
+| `pthread_attr_destroy()` |删除线程的属性| 
+| `pthread_kill()` |向线程发送一个信号| 
+
+## NSThread
+NSThread 是苹果官方提供的，使用起来比 pthread 更加面向对象，简单易用，可以直接操作线程对象。不过也需要需要程序员自己管理线程的生命周期(主要是创建)，我们在开发的过程中偶尔使用 NSThread。比如我们会经常调用 `[NSThread currentThread]` 来显示当前的进程信息。
+
+```objc
+//1、创建并启动线程
+NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(run) object:nil];
+[thread start];
+//2、创建并自动启动线程
+[NSThread detachNewThreadSelector:@selector(run) toTarget:self withObject:nil];
+```
+
+## iOS 线程间通信
+| thread | method |
+| :------- |:-------|
+| NSObject | `- (void)performSelectorOnMainThread:(SEL)aSelector withObject:(nullable id)arg waitUntilDone:(BOOL)wait`<br><br>`- (void)performSelector:(SEL)aSelector onThread:(NSThread *)thr withObject:(nullable id)arg waitUntilDone:(BOOL)wait` |
+| GCD | `dispatch_async(dispatch_get_global_queue())`<br><br> `dispatch_sync(dispatch_get_main_queue())` |
+| NSOperation | `[NSOperationQueue mainQueue]`回到主线程 |
+
+##### NSObject 线程通信
+```objc
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    [NSThread detachNewThreadSelector:@selector(run) toTarget:self withObject:nil];
+}
+
+- (void)notify:(NSDictionary *)dic {
+    NSLog(@"%@",dic[@"name"]);
+    NSLog(@"2-%@", [NSThread currentThread]);
+}
+
+- (void)run {
+    NSLog(@"1-%@", [NSThread currentThread]);
+    [self performSelectorOnMainThread:@selector(notify:) withObject:@{@"name": @"mm"} waitUntilDone:YES];
+}
+```
+输出
+```objc
+2019-12-27 15:04:46.408512+0800 OC_test[96466:2477652] 1-<NSThread: 0x600002d00d80>{number = 7, name = (null)}
+2019-12-27 15:04:46.499677+0800 OC_test[96466:2477545] mm
+2019-12-27 15:04:46.508057+0800 OC_test[96466:2477545] 2-<NSThread: 0x600002d57940>{number = 1, name = main}
+```
+##### GCD 线程通信
+```objc
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSLog(@"--%@", [NSThread currentThread]);
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            NSLog(@"--%@", [NSThread currentThread]);
+        });
+});
+```
+输出
+```objc
+2019-12-27 15:16:12.636018+0800 OC_test[96557:2485944] --<NSThread: 0x6000000032c0>{number = 6, name = (null)}
+2019-12-27 15:16:12.654791+0800 OC_test[96557:2485861] --<NSThread: 0x600000068d40>{number = 1, name = main}
+```
+##### NSOperation 线程通信
+
+```objc
+NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+[queue addOperationWithBlock:^{
+    NSLog(@"--%@", [NSThread currentThread]);
+    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+        NSLog(@"--%@", [NSThread currentThread]);
+    }];
+}];
+```
+输出
+```objc
+2019-12-27 15:25:28.723604+0800 OC_test[96620:2492092] --<NSThread: 0x600002db9f40>{number = 4, name = (null)}
+2019-12-27 15:25:28.745156+0800 OC_test[96620:2491999] --<NSThread: 0x600002de6d00>{number = 1, name = main}
+```
+
 Reference:
 > [并发编程：API 及挑战](https://objccn.io/issue-2-1/)
+> 
+> [NSThread](https://developer.apple.com/documentation/foundation/nsthread)
