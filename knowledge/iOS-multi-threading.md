@@ -73,13 +73,13 @@ OS 中的多线程的解决方案分别是：pthread，NSThread，GCD， NSOpera
 | GCD | 1. 旨在替代 pthread<br>2. 让开发者更加容易的使用设备上的多核CPU<br>| C  | 自动管理  | 经常使用 |1. 是基于C语言的底层API<br>2. 用 Block 定义任务，使用起来非常灵活便捷<br>3.提供了更多的控制能力以及操作队列中所不能使用的底层函数|
 | NSOperation | 1. 基于 GCD<br>2. GCD 提供了更加底层的控制，而操作队列则在 GCD 之上实现了一些方便的功能<br>3. 使用更加面向对象| C  | 自动管理  | 经常使用 |1. 是使用 GCD 实现的一套 Objective-C 的 API<br>2. 是面向对象的线程技术<br>3. 提供了一些在 GCD 中不容易实现的特性，如：限制最大并发数量、操作之间的依赖关系|
 
-###GCD 和 NSOperation 有什么区别
+### GCD 和 NSOperation 有什么区别
 
 1. GCD 是纯 C 语言的 API；NSOperation 是基于 GCD 的 OC 版本封装
 2. GCD 只支持 FIFO 的队列；NSOperation 可以很方便地调整执行顺序，设置最大并发数量
 3. NSOperationQueue 可以轻松在 operation 间设置依赖关系，而 GCD 需要些很多代码才能实现
 4. NSOperationQueue 支持 KVO，可以检测 operation 是否正在执行(isExecuted)，是否结束(isFinish), 是否取消(isCancel)
-5. GCD 的执行速度比 NSOperation 快
+5. GCD 的执行速度比 NSOperation 快，GCD 给予你更多的控制权力以及操作队列中所不能使用的底层函数
 
 GCD 是比较底层的封装，我们知道较低层的代码一般性能都是比较高的，相对于NSOperationQueue。所以追求性能，而功能够用的话就可以考虑使用GCD。如果异步操作的过程需要更多的用户交互和被UI显示出来，NSOperationQueue 会是一个好选择。如果任务之间没有什么依赖关系，而是需要更高的并发能力，GCD 则更有优势。
 
@@ -127,8 +127,11 @@ NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(run)
 [NSThread detachNewThreadSelector:@selector(run) toTarget:self withObject:nil];
 ```
 
+## GCD
+
+
 ## iOS 线程间通信
-| thread | method |
+| name | method |
 | :------- |:-------|
 | NSObject | `- (void)performSelectorOnMainThread:(SEL)aSelector withObject:(nullable id)arg waitUntilDone:(BOOL)wait`<br><br>`- (void)performSelector:(SEL)aSelector onThread:(NSThread *)thr withObject:(nullable id)arg waitUntilDone:(BOOL)wait` |
 | GCD | `dispatch_async(dispatch_get_global_queue())`<br><br> `dispatch_sync(dispatch_get_main_queue())` |
@@ -188,6 +191,18 @@ NSOperationQueue *queue = [[NSOperationQueue alloc] init];
 2019-12-27 15:25:28.745156+0800 OC_test[96620:2491999] --<NSThread: 0x600002de6d00>{number = 1, name = main}
 ```
 
+## iOS 进程间通信
+进程是容纳运行一个程序所需要所有信息的容器。在 iOS 中每个 APP 里就一个进程，所以进程间的通信实际上是 APP 之间的通信。iOS 是封闭的系统，每个 APP 都只能访问各自沙盒里的内容。
+
+1. URL Scheme（openURL跳转白名单的 scheme）
+2. Keychain（安全、独立于每个App的沙盒之外的，所以即使App被删除之后，Keychain里面的信息依然存在）
+3. UIPasteboard（每一个App都可以去访问系统剪切板，所以就能够通过系统剪贴板进行App间的数据传输）
+4. UIDocumentInteractionController（用来实现同设备上app之间的共享文档，以及文档预览、打印、发邮件和复制等功能）
+5. local socket
+
+
+
+
 Reference:
 > [并发与并行的区别？](https://www.zhihu.com/question/33515481)
 > 
@@ -196,3 +211,5 @@ Reference:
 > [NSThread](https://developer.apple.com/documentation/foundation/nsthread)
 > 
 > [进程/线程间通信](http://www.helloted.com/ios/2017/10/20/thread_message/)
+> 
+> [底层并发 API](https://objccn.io/issue-2-3/)
