@@ -61,8 +61,6 @@
 
 并行是咽一口饭同时说一句话，而这光靠一张嘴是办不到的，至少两张嘴。
 
-Reference:
-> [并发与并行的区别？](https://www.zhihu.com/question/33515481)
 
 ## 三、iOS 中的四种多线程方案
 OS 中的多线程的解决方案分别是：pthread，NSThread，GCD， NSOperation。
@@ -191,6 +189,10 @@ NSOperationQueue *queue = [[NSOperationQueue alloc] init];
 ```
 
 Reference:
+> [并发与并行的区别？](https://www.zhihu.com/question/33515481)
+> 
 > [并发编程：API 及挑战](https://objccn.io/issue-2-1/)
 > 
 > [NSThread](https://developer.apple.com/documentation/foundation/nsthread)
+> 
+> [进程/线程间通信](http://www.helloted.com/ios/2017/10/20/thread_message/)
