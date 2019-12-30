@@ -83,7 +83,7 @@ OS 中的多线程的解决方案分别是：pthread，NSThread，GCD， NSOpera
 
 GCD 是比较底层的封装，我们知道较低层的代码一般性能都是比较高的，相对于NSOperationQueue。所以追求性能，而功能够用的话就可以考虑使用GCD。如果异步操作的过程需要更多的用户交互和被UI显示出来，NSOperationQueue 会是一个好选择。如果任务之间没有什么依赖关系，而是需要更高的并发能力，GCD 则更有优势。
 
-## pthread
+### pthread
 ```objc
 #import <pthread.h>
 
@@ -116,7 +116,7 @@ OC_test[96204:2452609] <NSThread: 0x6000000a6b80>{number = 7, name = (null)}
 | `pthread_attr_destroy()` |删除线程的属性| 
 | `pthread_kill()` |向线程发送一个信号| 
 
-## NSThread
+### NSThread
 NSThread 是苹果官方提供的，使用起来比 pthread 更加面向对象，简单易用，可以直接操作线程对象。不过也需要需要程序员自己管理线程的生命周期(主要是创建)，我们在开发的过程中偶尔使用 NSThread。比如我们会经常调用 `[NSThread currentThread]` 来显示当前的进程信息。
 
 ```objc
@@ -127,10 +127,167 @@ NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(run)
 [NSThread detachNewThreadSelector:@selector(run) toTarget:self withObject:nil];
 ```
 
-## GCD
+### GCD
+Grand Central Dispatch（GCD） 是 Apple 开发的一个多核编程的较新的解决方法。它主要用于优化应用程序以支持多核处理器以及其他对称多处理系统。它是一个在线程池模式的基础上执行的并发任务。在 Mac OS X 10.6 雪豹中首次推出，也可在 iOS 4 及以上版本使用。
+
+通过 GCD，开发者不用再直接跟线程打交道了，只需要向队列中添加代码块即可，GCD 在后端管理着一个线程池。GCD 不仅决定着你的代码块将在哪个线程被执行，它还根据可用的系统资源对这些线程进行管理。这样可以将开发者从线程管理的工作中解放出来，通过集中的管理线程，来缓解大量线程被创建的问题。
+
+GCD 带来的另一个重要改变是，作为开发者可以将工作考虑为一个队列，而不是一堆线程，这种并行的抽象模型更容易掌握和使用。
+![]()
+#### GCD 实现的原理
+GCD有一个底层线程池，这个池中存放的是一个个的线程。线程中的线程是可以重用的，当一段时间后这个线程没有被调用胡话，这个线程就会被销毁。注意：开多少条线程是由底层线程池决定的（线程建议控制再3~5条），池是系统自动来维护，不需要我们来维护。开发者可以创建自定义队列：串行或者并行队列。自定义队列非常强大，在自定义队列中被调度的所有 block 最终都将被放入到系统的全局队列中和线程池中。
+#### GCD 的优点
+1. GCD 可用于多核的并行运算
+2. GCD 会自动利用更多的 CPU 内核（比如双核、四核）
+3. GCD 会自动管理线程的生命周期（创建线程、调度任务、销毁线程）
+4. 程序员只需要告诉 GCD 想要执行什么任务，不需要编写任何线程管理代码。
+
+#### GCD 的任务和队列
+##### 任务
+任务就是你需要执行的代码，在 GCD 中就是 block 中的代码，它有两种执行方式：
+* 同步执行
+```objc
+dispatch_sync(queue, ^{
+    // 这里放同步执行任务代码
+});
+```
+同步添加任务到指定的队列中，在添加的任务执行结束之前，会一直等待，直到队列里面的任务完成之后再继续执行。
+只能在当前线程中执行任务，不具备开启新线程的能力。
+
+* 异步执行
+ ```objc
+dispatch_async(queue, ^{
+    // 这里放异步执行任务代码
+});
+```
+异步添加任务到指定的队列中，它不会做任何等待，可以继续执行任务。
+可以在新的线程中执行任务，具备开启新线程的能力。
+
+##### 队列
+这里的队列指执行任务的等待队列，即用来存放任务的队列。队列是一种特殊的线性表，采用 FIFO（先进先出）的原则，即新任务总是被插入到队列的末尾，而读取任务的时候总是从队列的头部开始读取。每读取一个任务，则从队列中释放一个任务。两种队列分别是
+* 串行队列
+```objc
+dispatch_queue_t queue = dispatch_queue_create("com.mm.test", DISPATCH_QUEUE_SERIAL);
+```
+每次只有一个任务被执行。让任务一个接着一个地执行。（只开启一个线程，一个任务执行完毕后，再执行下一个任务）
+
+* 并发队列
+```objc
+dispatch_queue_t queue = dispatch_queue_create("com.mm.test", DISPATCH_QUEUE_CONCURRENT);
+```
+可以让多个任务并发（同时）执行。（可以开启多个线程，并且同时执行任务）
+
+##### 任务 + 队列
+
+| 任务 | 串行队列(新建 concurrent) | 并发队列(新建 serial) | 主队列(main queue) | 全局并发队列(global queue) |
+| :-------: |:-------:|:-------:|:-------:|:-------:|
+| 同步(sync) | 没有开启新线程，串行执行任务（main thread）  | 没有开启新线程，串行执行任务（main thread）  | 死锁 | 没有开启新线程，串行执行任务（main thread |
+| 异步(async) | 开启新线程（1条），串行执行任务 | 开启新线程，并发执行任务 | 没有开启新线程 | 开启新线程，并发执行任务 |
+
+##### 死锁
+一个简单的死锁
+```objc
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        
+    });
+}
+```
+在主线程主队列添加一个同步任务导致死锁， 这是因为 **主队列中追加的同步任务** 和 **主线程本身的任务** 两者之间相互等待。
+
+第二种死锁
+```objc
+dispatch_queue_t queue = dispatch_queue_create("mm", DISPATCH_QUEUE_SERIAL);
+//task 1
+dispatch_async(queue, ^{
+    NSLog(@"1--%@", [NSThread currentThread]);
+    //task 2
+    dispatch_sync(queue, ^{
+        NSLog(@"2--%@", [NSThread currentThread]);
+    });
+});
+NSLog(@"3--%@", [NSThread currentThread]);
+```
+输出
+```objc
+2019-12-30 16:41:50.245060+0800 OC_test[7817:229850] 3--<NSThread: 0x6000032dbac0>{number = 1, name = main}
+2019-12-30 16:41:50.245077+0800 OC_test[7817:229940] 1--<NSThread: 0x600003285180>{number = 6, name = (null)}
+```
+上面形成死锁，这是因为异步执行 *task1* 的时候在 queue 中添加了同步任务 *task2*，那么 *task2* 就得等到 *task1* 执行完毕才能执行，而由于 *task2* 又在 *task1* 中，所以 *task2* 执行完毕后 *task1* 才算执行完，两者互相等待形成了 **死锁**。
+
+#####  GCD 的其他方法
+###### 1、dispatch_barrier_async
+我们有时需要异步执行两组操作，而且第一组操作执行完之后，才能开始执行第二组操作。这样我们就需要一个相当于 栅栏 一样的一个方法将两组异步执行的操作组给分割起来，当然这里的操作组里可以包含一个或多个任务。这就需要用到 `dispatch_barrier_async` 方法在两个操作组间形成栅栏。
+
+`dispatch_barrier_async` 方法会等待前边追加到并发队列中的任务全部执行完毕之后，再将指定的任务追加到该异步队列中。然后在 `dispatch_barrier_async` 方法追加的任务执行完毕之后，异步队列才恢复为一般动作，接着追加任务到该异步队列并开始执行。
+
+```objc
+dispatch_queue_t queue = dispatch_queue_create("mm", DISPATCH_QUEUE_CONCURRENT);
+dispatch_async(queue, ^{
+    [NSThread sleepForTimeInterval:2];
+    NSLog(@"1--%@", [NSThread currentThread]);
+});
+dispatch_async(queue, ^{
+    [NSThread sleepForTimeInterval:1];
+    NSLog(@"2--%@", [NSThread currentThread]);
+});
+dispatch_async(queue, ^{
+    NSLog(@"3--%@", [NSThread currentThread]);
+});
+
+dispatch_barrier_async(queue, ^{
+    [NSThread sleepForTimeInterval:1];
+    NSLog(@"barrier--%@", [NSThread currentThread]);
+});
+
+dispatch_async(queue, ^{
+    [NSThread sleepForTimeInterval:2];
+    NSLog(@"4--%@", [NSThread currentThread]);
+});
+dispatch_async(queue, ^{
+    [NSThread sleepForTimeInterval:1];
+    NSLog(@"5--%@", [NSThread currentThread]);
+});
+```
+输出
+```objc
+2019-12-30 16:54:32.012007+0800 OC_test[7862:236849] 3--<NSThread: 0x6000011c5f80>{number = 6, name = (null)}
+2019-12-30 16:54:33.013276+0800 OC_test[7862:236858] 2--<NSThread: 0x6000011c1300>{number = 7, name = (null)}
+2019-12-30 16:54:34.012280+0800 OC_test[7862:236850] 1--<NSThread: 0x6000011fd680>{number = 5, name = (null)}
+2019-12-30 16:54:35.012732+0800 OC_test[7862:236850] barrier--<NSThread: 0x6000011fd680>{number = 5, name = (null)}
+2019-12-30 16:54:36.013265+0800 OC_test[7862:236858] 5--<NSThread: 0x6000011c1300>{number = 7, name = (null)}
+2019-12-30 16:54:37.013311+0800 OC_test[7862:236850] 4--<NSThread: 0x6000011fd680>{number = 5, name = (null)}
+```
+###### 2、dispatch_after
+我们经常会遇到这样的需求：在指定时间（例如 3 秒）之后执行某个任务。可以用 GCD 的`dispatch_after` 方法来实现。
+
+需要注意的是：`dispatch_after` 方法并不是在指定时间之后才开始执行处理，而是在指定时间之后将任务追加到主队列中。
+
+```objc
+dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    // 2.0 秒后异步追加任务代码到主队列，并开始执行
+    NSLog(@"after---%@",[NSThread currentThread]);
+});
+```
+
+######3、dispatch_once
+我们在创建单例、或者有整个程序运行过程中只执行一次的代码时，我们就用到了 GCD 的 dispatch_once 方法。使用 dispatch_once 方法能保证某段代码在程序运行过程中只被执行 1 次，并且即使在多线程的环境下，dispatch_once 也可以保证线程安全。
+
+```objc
+- (void)once {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        // 只执行 1 次的代码（这里面默认是线程安全的）
+    });
+}
+```
+`dispatch_once` 用原子性操作 block 执行完成标记位，同时用信号量确保只有一个线程执行 block，等 block 执行完再唤醒所有等待中的线程。
+关于 `dispatch_once` 的原理可以参考 [深入浅出 GCD 之 dispatch_once](https://xiaozhuanlan.com/topic/7916538240) 。
 
 
-## iOS 线程间通信
+
+## 四、iOS 线程间通信
 | name | method |
 | :------- |:-------|
 | NSObject | `- (void)performSelectorOnMainThread:(SEL)aSelector withObject:(nullable id)arg waitUntilDone:(BOOL)wait`<br><br>`- (void)performSelector:(SEL)aSelector onThread:(NSThread *)thr withObject:(nullable id)arg waitUntilDone:(BOOL)wait` |
@@ -160,11 +317,12 @@ NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(run)
 2019-12-27 15:04:46.499677+0800 OC_test[96466:2477545] mm
 2019-12-27 15:04:46.508057+0800 OC_test[96466:2477545] 2-<NSThread: 0x600002d57940>{number = 1, name = main}
 ```
+
 ##### GCD 线程通信
 ```objc
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSLog(@"--%@", [NSThread currentThread]);
-        dispatch_sync(dispatch_get_main_queue(), ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
             NSLog(@"--%@", [NSThread currentThread]);
         });
 });
@@ -213,3 +371,5 @@ Reference:
 > [进程/线程间通信](http://www.helloted.com/ios/2017/10/20/thread_message/)
 > 
 > [底层并发 API](https://objccn.io/issue-2-3/)
+> 
+> [iOS多线程：『GCD』详尽总结](https://juejin.im/post/5a90de68f265da4e9b592b40)
