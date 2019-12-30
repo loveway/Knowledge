@@ -373,3 +373,5 @@ Reference:
 > [底层并发 API](https://objccn.io/issue-2-3/)
 > 
 > [iOS多线程：『GCD』详尽总结](https://juejin.im/post/5a90de68f265da4e9b592b40)
+> 
+> [深入浅出 GCD 之 dispatch_once](https://xiaozhuanlan.com/topic/7916538240)
