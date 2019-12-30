@@ -83,7 +83,7 @@ OS 中的多线程的解决方案分别是：pthread，NSThread，GCD， NSOpera
 
 GCD 是比较底层的封装，我们知道较低层的代码一般性能都是比较高的，相对于NSOperationQueue。所以追求性能，而功能够用的话就可以考虑使用GCD。如果异步操作的过程需要更多的用户交互和被UI显示出来，NSOperationQueue 会是一个好选择。如果任务之间没有什么依赖关系，而是需要更高的并发能力，GCD 则更有优势。
 
-### pthread
+### 1、pthread
 ```objc
 #import <pthread.h>
 
@@ -116,7 +116,7 @@ OC_test[96204:2452609] <NSThread: 0x6000000a6b80>{number = 7, name = (null)}
 | `pthread_attr_destroy()` |删除线程的属性| 
 | `pthread_kill()` |向线程发送一个信号| 
 
-### NSThread
+### 2、NSThread
 NSThread 是苹果官方提供的，使用起来比 pthread 更加面向对象，简单易用，可以直接操作线程对象。不过也需要需要程序员自己管理线程的生命周期(主要是创建)，我们在开发的过程中偶尔使用 NSThread。比如我们会经常调用 `[NSThread currentThread]` 来显示当前的进程信息。
 
 ```objc
@@ -127,7 +127,7 @@ NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(run)
 [NSThread detachNewThreadSelector:@selector(run) toTarget:self withObject:nil];
 ```
 
-### GCD
+### 3、GCD
 Grand Central Dispatch（GCD） 是 Apple 开发的一个多核编程的较新的解决方法。它主要用于优化应用程序以支持多核处理器以及其他对称多处理系统。它是一个在线程池模式的基础上执行的并发任务。在 Mac OS X 10.6 雪豹中首次推出，也可在 iOS 4 及以上版本使用。
 
 通过 GCD，开发者不用再直接跟线程打交道了，只需要向队列中添加代码块即可，GCD 在后端管理着一个线程池。GCD 不仅决定着你的代码块将在哪个线程被执行，它还根据可用的系统资源对这些线程进行管理。这样可以将开发者从线程管理的工作中解放出来，通过集中的管理线程，来缓解大量线程被创建的问题。
@@ -274,7 +274,7 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), 
 });
 ```
 
-######3、dispatch_once
+###### 3、dispatch_once
 我们在创建单例、或者有整个程序运行过程中只执行一次的代码时，我们就用到了 GCD 的 dispatch_once 方法。使用 dispatch_once 方法能保证某段代码在程序运行过程中只被执行 1 次，并且即使在多线程的环境下，dispatch_once 也可以保证线程安全。
 
 ```objc
@@ -289,6 +289,85 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), 
 关于 `dispatch_once` 的原理可以参考 [深入浅出 GCD 之 dispatch_once](https://xiaozhuanlan.com/topic/7916538240) 。
 
 ![](https://github.com/loveway/iOS-Knowledge/blob/master/image/dispatch_once.png?raw=true)
+
+###### 4、dispatch_apply
+通常我们会用 for 循环遍历，但是 GCD 给我们提供了快速迭代的方法 `dispatch_apply`。`dispatch_apply` 按照指定的次数将指定的任务追加到指定的队列中，并等待全部队列执行结束。
+
+如果是在串行队列中使用 `dispatch_apply`，那么就和 for 循环一样，按顺序同步执行。但是这样就体现不出快速迭代的意义了。
+
+我们可以利用并发队列进行异步执行。比如说遍历 0~5 这 6 个数字，for 循环的做法是每次取出一个元素，逐个遍历。`dispatch_apply` 可以 在多个线程中同时（异步）遍历多个数字。
+
+还有一点，无论是在串行队列，还是并发队列中，`dispatch_apply` 都会等待全部任务执行完毕，这点就像是同步操作，也像是队列组中的 `dispatch_group_wait` 方法。
+
+```objc
+dispatch_queue_t queue = dispatch_queue_create("mm", DISPATCH_QUEUE_CONCURRENT);
+NSLog(@"begin--%@", [NSThread currentThread]);
+    
+dispatch_apply(6, queue, ^(size_t index) {
+    NSLog(@"%zu--%@", index, [NSThread currentThread]);
+});
+    
+NSLog(@"end--%@", [NSThread currentThread]);
+```
+
+输出
+
+```objc
+2019-12-30 17:25:35.671037+0800 OC_test[8222:256731] begin--<NSThread: 0x600002b78e00>{number = 1, name = main}
+2019-12-30 17:25:35.671298+0800 OC_test[8222:256731] 0--<NSThread: 0x600002b78e00>{number = 1, name = main}
+2019-12-30 17:25:35.671398+0800 OC_test[8222:256810] 1--<NSThread: 0x600002b22d00>{number = 3, name = (null)}
+2019-12-30 17:25:35.671562+0800 OC_test[8222:256810] 2--<NSThread: 0x600002b22d00>{number = 3, name = (null)}
+2019-12-30 17:25:35.671588+0800 OC_test[8222:256731] 3--<NSThread: 0x600002b78e00>{number = 1, name = main}
+2019-12-30 17:25:35.671694+0800 OC_test[8222:256810] 4--<NSThread: 0x600002b22d00>{number = 3, name = (null)}
+2019-12-30 17:25:35.671707+0800 OC_test[8222:256731] 5--<NSThread: 0x600002b78e00>{number = 1, name = main}
+2019-12-30 17:25:35.671866+0800 OC_test[8222:256731] end--<NSThread: 0x600002b78e00>{number = 1, name = main}
+```
+
+因为是在并发队列中异步执行任务，所以各个任务的执行时间长短不定，最后结束顺序也不定。但是 `apply---end` 一定在最后执行。这是因为 `dispatch_apply` 方法会等待全部任务执行完毕。
+
+###### 5、dispatch_group
+有时候我们会有这样的需求：分别异步执行 2 个耗时任务，然后当 2 个耗时任务都执行完毕后再回到主线程执行任务。这时候我们可以用到 GCD 的队列组。
+* 调用队列组的 `dispatch_group_async` 先把任务放到队列中，然后将队列放入队列组中。或者使用队列组的 `dispatch_group_enter`、`dispatch_group_leave` 组合来实现 `dispatch_group_async`。
+* 调用队列组的 dispatch_group_notify 回到指定线程执行任务。或者使用 dispatch_group_wait 回到当前线程继续向下执行（会阻塞当前线程）
+
+```objc
+dispatch_queue_t queue = dispatch_queue_create("mm", DISPATCH_QUEUE_CONCURRENT);
+dispatch_queue_t globalQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+dispatch_group_t group = dispatch_group_create();
+NSLog(@"begin--%@", [NSThread currentThread]);
+dispatch_group_async(group, queue, ^{
+    [NSThread sleepForTimeInterval:2];
+    NSLog(@"1--%@", [NSThread currentThread]);
+});
+dispatch_group_async(group, globalQueue, ^{
+    [NSThread sleepForTimeInterval:1];
+    NSLog(@"2--%@", [NSThread currentThread]);
+});
+    
+dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+    [NSThread sleepForTimeInterval:1];
+    NSLog(@"3--%@", [NSThread currentThread]);
+    NSLog(@"group end");
+});
+NSLog(@"end--%@", [NSThread currentThread]);
+```
+
+输出
+
+```objc
+2019-12-30 17:39:50.279018+0800 OC_test[8316:265481] begin--<NSThread: 0x600001c28c40>{number = 1, name = main}
+2019-12-30 17:39:50.279317+0800 OC_test[8316:265481] end--<NSThread: 0x600001c28c40>{number = 1, name = main}
+2019-12-30 17:39:51.280501+0800 OC_test[8316:265569] 2--<NSThread: 0x600001c1a740>{number = 5, name = (null)}
+2019-12-30 17:39:52.283147+0800 OC_test[8316:265574] 1--<NSThread: 0x600001c6f600>{number = 3, name = (null)}
+2019-12-30 17:39:53.284526+0800 OC_test[8316:265481] 3--<NSThread: 0x600001c28c40>{number = 1, name = main}
+2019-12-30 17:39:53.284892+0800 OC_test[8316:265481] group end
+```
+
+`dispatch_group` 有两个需要注意的地方：
+> 1、`dispatch_group_enter` 必须在 `dispatch_group_leave` 之前出现
+> 2、`dispatch_group_enter` 和 `dispatch_group_leave` 必须成对出现,
+> 3、如果 `dispatch_group_enter` 比 `dispatch_group_leave` 多一次，则 wait 函数等待的线程不会被唤醒和注册 notify 的回调 block 不会执行；
+> 4、如果 `dispatch_group_leave` 比 `dispatch_group_enter` 多一次，则会引起崩溃。
 
 
 ## 四、iOS 线程间通信
@@ -353,7 +432,7 @@ NSOperationQueue *queue = [[NSOperationQueue alloc] init];
 2019-12-27 15:25:28.745156+0800 OC_test[96620:2491999] --<NSThread: 0x600002de6d00>{number = 1, name = main}
 ```
 
-## iOS 进程间通信
+## 五、iOS 进程间通信
 进程是容纳运行一个程序所需要所有信息的容器。在 iOS 中每个 APP 里就一个进程，所以进程间的通信实际上是 APP 之间的通信。iOS 是封闭的系统，每个 APP 都只能访问各自沙盒里的内容。
 
 1. URL Scheme（openURL跳转白名单的 scheme）
@@ -377,3 +456,5 @@ Reference:
 > [底层并发 API](https://objccn.io/issue-2-3/)
 > 
 > [iOS多线程：『GCD』详尽总结](https://juejin.im/post/5a90de68f265da4e9b592b40)
+> 
+> [陈爱彬小专栏](https://xiaozhuanlan.com/u/3785694919)
