@@ -133,9 +133,12 @@ Grand Central Dispatch（GCD） 是 Apple 开发的一个多核编程的较新�
 通过 GCD，开发者不用再直接跟线程打交道了，只需要向队列中添加代码块即可，GCD 在后端管理着一个线程池。GCD 不仅决定着你的代码块将在哪个线程被执行，它还根据可用的系统资源对这些线程进行管理。这样可以将开发者从线程管理的工作中解放出来，通过集中的管理线程，来缓解大量线程被创建的问题。
 
 GCD 带来的另一个重要改变是，作为开发者可以将工作考虑为一个队列，而不是一堆线程，这种并行的抽象模型更容易掌握和使用。
-![]()
+
 #### GCD 实现的原理
 GCD有一个底层线程池，这个池中存放的是一个个的线程。线程中的线程是可以重用的，当一段时间后这个线程没有被调用胡话，这个线程就会被销毁。注意：开多少条线程是由底层线程池决定的（线程建议控制再3~5条），池是系统自动来维护，不需要我们来维护。开发者可以创建自定义队列：串行或者并行队列。自定义队列非常强大，在自定义队列中被调度的所有 block 最终都将被放入到系统的全局队列中和线程池中。
+
+![](https://github.com/loveway/iOS-Knowledge/blob/master/image/gcd-queues.png?raw=true)
+
 #### GCD 的优点
 1. GCD 可用于多核的并行运算
 2. GCD 会自动利用更多的 CPU 内核（比如双核、四核）
@@ -285,6 +288,7 @@ dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), 
 `dispatch_once` 用原子性操作 block 执行完成标记位，同时用信号量确保只有一个线程执行 block，等 block 执行完再唤醒所有等待中的线程。
 关于 `dispatch_once` 的原理可以参考 [深入浅出 GCD 之 dispatch_once](https://xiaozhuanlan.com/topic/7916538240) 。
 
+![](https://github.com/loveway/iOS-Knowledge/blob/master/image/dispatch_once.png?raw=true)
 
 
 ## 四、iOS 线程间通信
