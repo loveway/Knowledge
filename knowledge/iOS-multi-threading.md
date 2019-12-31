@@ -440,13 +440,15 @@ NSLog(@"main thread");
 
 可以看到 obj 到最后最大的值为 45，其实上面 for 循环主要就是求 0-9 的和，我们可以看到虽然异步 i = 2 比 i = 1 先执行，但是并不影响最终结果，所以是线程安全的。原理就是当 *线程1* 执行到 `dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER)` 时，semaphor e的信号量为 1，所以使信号量 -1 变为 0，并且 *线程1* 继续往下执行；如果当在 *线程1* `obj += i` 这一行代码还没执行完的时候，又有 *线程2* 来访问，此时 semaphore 信号量为 0，`dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER)` 会一直阻塞 *线程2* 直到 *线程1* 执行完毕（此时 *线程2* 处于等待状态）。
 
-> 需要注意的是下面代码会使程序崩溃
+ 需要注意的是下面代码会使程序崩溃
+ 
 ```objc
 dispatch_semaphore_t semephore = dispatch_semaphore_create(1);
 dispatch_semaphore_wait(semephore, DISPATCH_TIME_FOREVER);
 //重新赋值或者将semephore = nil都会造成崩溃,因为此时信号量还在使用中
  semephore = dispatch_semaphore_create(0);
-> ```
+```
+ 
 
 
 ## 四、iOS 线程间通信
