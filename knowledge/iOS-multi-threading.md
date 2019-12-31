@@ -369,6 +369,85 @@ NSLog(@"end--%@", [NSThread currentThread]);
 > 3、如果 `dispatch_group_enter` 比 `dispatch_group_leave` 多一次，则 wait 函数等待的线程不会被唤醒和注册 notify 的回调 block 不会执行；
 > 4、如果 `dispatch_group_leave` 比 `dispatch_group_enter` 多一次，则会引起崩溃。
 
+###### 6、dispatch_semaphore
+
+GCD 中的信号量是指 Dispatch Semaphore，是持有计数的信号。类似于过高速路收费站的栏杆。可以通过时，打开栏杆，不可以通过时，关闭栏杆。在 Dispatch Semaphore 中，使用计数来完成这个功能，计数小于 0 时等待，不可通过。计数为 0 或大于 0 时，计数减 1 且不等待，可通过。
+
+作用主要是 **保持线程同步** 和 **给线程加锁** 。
+
+* `dispatch_semaphore_create` 可以生成信号量，参数 value 是信号量计数的初始值
+* `dispatch_semaphore_wait` 会让信号量值减一，当信号量值为 0 时会等待(直到超时)，否则正常执行
+* `dispatch_semaphore_signal` 会让信号量值加一，如果有通
+* `dispatch_semaphore_wait` 函数等待 Dispatch Semaphore 的计数值增加的线程，会由系统唤醒最先等待的线程执行。
+
+```objc
+dispatch_queue_t queue = dispatch_queue_create("mm", DISPATCH_QUEUE_CONCURRENT);
+dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+NSLog(@"1");
+dispatch_async(queue, ^{
+    NSLog(@"2");
+    [NSThread sleepForTimeInterval:3];
+    dispatch_semaphore_signal(semaphore);
+});
+NSLog(@"3");
+dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+NSLog(@"4");
+```
+
+输出
+
+```objc
+2019-12-31 10:24:36.497961+0800 OC_test[12447:634185] 1
+2019-12-31 10:24:36.498180+0800 OC_test[12447:634185] 3
+2019-12-31 10:24:36.498205+0800 OC_test[12447:634262] 2
+2019-12-31 10:24:39.501758+0800 OC_test[12447:634185] 4
+```
+
+上面代码中：当执行到 `dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER)` 的时候发现 semaphore 的值为 0 ，所以线程会一直阻塞，直到异步执行到 `dispatch_semaphore_signal(semaphore)` 的时候 semaphore 的值为 1，此时再执行 `dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER)` 使信号量 -1 然后往下执行。
+
+我们再来看下面这段代码
+
+```objc
+dispatch_queue_t queue = dispatch_queue_create("mm", DISPATCH_QUEUE_CONCURRENT);
+dispatch_semaphore_t semaphore = dispatch_semaphore_create(1);
+__block int obj = 0;
+for (int i = 0; i < 10; i++) {
+    dispatch_async(queue, ^{
+        dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+        obj += i;
+        dispatch_semaphore_signal(semaphore);
+        NSLog(@" i = %d, obj = %d", i , obj);
+    });
+}
+NSLog(@"main thread");
+```
+
+输出
+
+```objc
+2019-12-31 10:43:35.424219+0800 OC_test[12719:651260] main thread
+2019-12-31 10:43:35.424243+0800 OC_test[12719:651403]  i = 0, obj = 0
+2019-12-31 10:43:35.424291+0800 OC_test[12719:651404]  i = 2, obj = 2
+2019-12-31 10:43:35.424300+0800 OC_test[12719:651402]  i = 1, obj = 3
+2019-12-31 10:43:35.424408+0800 OC_test[12719:651413]  i = 3, obj = 6
+2019-12-31 10:43:35.424480+0800 OC_test[12719:651414]  i = 4, obj = 10
+2019-12-31 10:43:35.424610+0800 OC_test[12719:651404]  i = 6, obj = 21
+2019-12-31 10:43:35.424608+0800 OC_test[12719:651403]  i = 5, obj = 15
+2019-12-31 10:43:35.424718+0800 OC_test[12719:651415]  i = 7, obj = 28
+2019-12-31 10:43:35.424788+0800 OC_test[12719:651414]  i = 8, obj = 36
+2019-12-31 10:43:35.424796+0800 OC_test[12719:651413]  i = 9, obj = 45
+```
+
+可以看到 obj 到最后最大的值为 45，其实上面 for 循环主要就是求 0-9 的和，我们可以看到虽然异步 i = 2 比 i = 1 先执行，但是并不影响最终结果，所以是线程安全的。原理就是当 *线程1* 执行到 `dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER)` 时，semaphor e的信号量为 1，所以使信号量 -1 变为 0，并且 *线程1* 继续往下执行；如果当在 *线程1* `obj += i` 这一行代码还没执行完的时候，又有 *线程2* 来访问，此时 semaphore 信号量为 0，`dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER)` 会一直阻塞 *线程2* 直到 *线程1* 执行完毕（此时 *线程2* 处于等待状态）。
+
+> 需要注意的是下面代码会使程序崩溃
+```objc
+dispatch_semaphore_t semephore = dispatch_semaphore_create(1);
+dispatch_semaphore_wait(semephore, DISPATCH_TIME_FOREVER);
+//重新赋值或者将semephore = nil都会造成崩溃,因为此时信号量还在使用中
+ semephore = dispatch_semaphore_create(0);
+> ```
+
 
 ## 四、iOS 线程间通信
 | name | method |
