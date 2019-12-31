@@ -449,6 +449,224 @@ dispatch_semaphore_wait(semephore, DISPATCH_TIME_FOREVER);
  semephore = dispatch_semaphore_create(0);
 ```
  
+**小结：线程同步的三种方法**
+1. dispatch_barrier
+2. dispatch_group
+3. dispatch_semaphore
+
+### 4、NSOperation、NSOperationQueue
+NSOperation、NSOperationQueue 是苹果提供给我们的一套多线程解决方案。实际上 NSOperation、NSOperationQueue 是基于 GCD 更高一层的封装，完全面向对象。但是比 GCD 更简单易用、代码可读性也更高。
+
+特点
+* 可添加完成的代码块，在操作完成后执行。
+* 添加操作之间的依赖关系，方便的控制执行顺序。
+* 设定操作执行的优先级。
+* 可以很方便的取消一个操作的执行。
+* 使用 KVO 观察对操作执行状态的更改：isExecuteing、isFinished、isCancelled。
+
+#### NSOperation
+NSOperation 是个抽象类，不能用来封装操作。我们只有使用它的子类来封装操作。我们有三种方式来封装操作。
+
+1. 使用子类 NSInvocationOperation
+2. 使用子类 NSBlockOperation
+3. 自定义继承自 NSOperation 的子类，通过实现内部相应的方法来封装操作。
+
+```objc
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    NSInvocationOperation *op = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(doSomething) object:nil];
+    [op start];
+    
+    NSBlockOperation *bop = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@"block op1 in thread %@", [NSThread currentThread]);
+    }];
+    [bop addExecutionBlock:^{
+        NSLog(@"block op2 in thread %@", [NSThread currentThread]);
+
+    }];
+    [bop start];
+}
+
+- (void)doSomething {
+    NSLog(@"invocation op in thread %@", [NSThread currentThread]);
+}
+```
+
+打印
+
+```objc
+2019-12-31 14:23:08.493950+0800 OC_test[14437:760967] invocation op in thread <NSThread: 0x6000034ba100>{number = 1, name = main}
+2019-12-31 14:23:08.494362+0800 OC_test[14437:761058] block op1 in thread <NSThread: 0x6000034f3080>{number = 4, name = (null)}
+2019-12-31 14:23:08.494384+0800 OC_test[14437:760967] block op2 in thread <NSThread: 0x6000034ba100>{number = 1, name = main}
+```
+
+在没有使用 NSOperationQueue、在主线程中单独使用使用子类 NSInvocationOperation 执行一个操作的情况下，操作是在当前线程执行的，并没有开启新线程。
+
+在其他线程中单独使用子类 NSInvocationOperation，操作是在当前调用的其他线程执行的，并没有开启新线程。
+
+在没有使用 NSOperationQueue、在主线程中单独使用 NSBlockOperation 执行一个操作的情况下，操作是在当前线程执行的，并没有开启新线程。
+
+NSBlockOperation 还提供了一个方法 `addExecutionBlock:`，通过 `addExecutionBlock:` 就可以为 NSBlockOperation 添加额外的操作。这些操作（包括 `blockOperationWithBlock` 中的操作）可以在不同的线程中同时（并发）执行。
+
+一般情况下，如果一个 NSBlockOperation 对象封装了多个操作。NSBlockOperation 是否开启新线程，取决于操作的个数。如果添加的操作的个数多，就会自动开启新线程。当然开启的线程数是由系统来决定的。
+
+#### NSOperationQueue
+NSOperationQueue 一共有两种队列：主队列、自定义队列。其中自定义队列同时包含了串行、并发功能。下边是主队列、自定义队列的基本创建方法和特点。
+
+##### 主队列
+凡是添加到主队列中的操作，都会放到主线程中执行。
+```objc
+NSOperationQueue *queue = [NSOperationQueue mainQueue];
+```
+
+##### 自定义队列（非主队列）
+添加到这种队列中的操作，就会自动放到子线程中执行。
+同时包含了：串行、并发功能。
+
+```objc
+NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+```
+将任务添加到对列
+
+```objc
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+    NSInvocationOperation *op = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(doSomething) object:nil];
+    NSBlockOperation *bop = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@"block op1 in thread %@", [NSThread currentThread]);
+    }];
+    [bop addExecutionBlock:^{
+        [NSThread sleepForTimeInterval:2];
+        NSLog(@"block op2 in thread %@", [NSThread currentThread]);
+    }];
+    [queue addOperation:op];
+    [queue addOperation:bop];
+}
+
+- (void)doSomething {
+    NSLog(@"invocation op in thread %@", [NSThread currentThread]);
+}
+```
+
+打印
+
+```objc
+2019-12-31 14:34:56.261256+0800 OC_test[14524:768509] block op1 in thread <NSThread: 0x600002630080>{number = 3, name = (null)}
+2019-12-31 14:34:56.261264+0800 OC_test[14524:768508] invocation op in thread <NSThread: 0x600002604440>{number = 6, name = (null)}
+2019-12-31 14:34:58.263819+0800 OC_test[14524:768510] block op2 in thread <NSThread: 0x600002638000>{number = 4, name = (null)}
+```
+
+我们可以看到开启了新的线程，还有一种向队列添加任务的方法 `addOperationWithBlock:` 也同样是开启了新的线程。
+
+##### NSOperationQueue 控制串行、并发
+设置 `maxConcurrentOperationCount` 这个属性就控制了并发还是串行。
+
+1. `maxConcurrentOperationCount` 默认情况下为 -1，表示不进行限制，可进行并发执行。
+2. `maxConcurrentOperationCount` 为 1 时，队列为串行队列。只能串行执行。
+3. `maxConcurrentOperationCount` 大于 1 时，队列为并发队列。操作并发执行，当然这个值不应超过系统限制，即使自己设置一个很大的值，系统也会自动调整为 min (自己设定的值，系统设定的默认最大值)。
+
+```objc
+NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+// 2.设置最大并发操作数
+queue.maxConcurrentOperationCount = 1; // 串行队列
+// queue.maxConcurrentOperationCount = 2; // 并发队列
+```
+
+#####  NSOperation 操作依赖
+
+NSOperation、NSOperationQueue 最吸引人的地方是它能添加操作之间的依赖关系。通过操作依赖，我们可以很方便的控制操作之间的执行先后顺序。NSOperation 提供了 3个 接口供我们管理和查看依赖。
+
+1. `- (void)addDependency:(NSOperation *)op` 添加依赖，使当前操作依赖于操作 op 的完成。
+2. `- (void)removeDependency:(NSOperation *)op` 移除依赖，取消当前操作对操作 op 的依赖。
+3. `@property (readonly, copy) NSArray<NSOperation *> *dependencies` 在当前操作开始执行之前完成执行的所有操作对象数组。
+
+```objc
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+    NSInvocationOperation *op = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(doSomething) object:nil];
+    NSBlockOperation *bop = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@"block op1 in thread %@", [NSThread currentThread]);
+    }];
+    [bop addExecutionBlock:^{
+        [NSThread sleepForTimeInterval:2];
+        NSLog(@"block op2 in thread %@", [NSThread currentThread]);
+    }];
+    [op addDependency:bop];
+    [queue addOperation:op];
+    [queue addOperation:bop];
+}
+
+- (void)doSomething {
+    NSLog(@"invocation op in thread %@", [NSThread currentThread]);
+}
+```
+
+打印
+
+```objc
+2019-12-31 14:46:24.499966+0800 OC_test[14602:775535] block op1 in thread <NSThread: 0x600001f67600>{number = 5, name = (null)}
+2019-12-31 14:46:26.504410+0800 OC_test[14602:775528] block op2 in thread <NSThread: 0x600001f77000>{number = 4, name = (null)}
+2019-12-31 14:46:26.505020+0800 OC_test[14602:775528] invocation op in thread <NSThread: 0x600001f77000>{number = 4, name = (null)}
+```
+
+如上设置依赖 `[op addDependency:bop]` , op 依赖于 bop，所以只有等 bop 执行完毕后 op 才执行。
+
+##### NSOperation 优先级
+NSOperation 提供了queuePriority（优先级）属性，queuePriority属性适用于同一操作队列中的操作，不适用于不同操作队列中的操作。默认情况下，所有新创建的操作对象优先级都是NSOperationQueuePriorityNormal。但是我们可以通过 `setQueuePriority:` 方法来改变当前操作在同一队列中的执行优先级
+
+##### NSOperation 常用属性和方法
+
+**取消操作方法**
+
+* `- (void)cancel` 可取消操作，实质是标记 isCancelled 状态。
+
+**判断操作状态方法**
+
+* `- (BOOL)isFinished` 判断操作是否已经结束。
+* `- (BOOL)isCancelled` 判断操作是否已经标记为取消。
+* `- (BOOL)isExecuting` 判断操作是否正在在运行。
+* `- (BOOL)isReady` 判断操作是否处于准备就绪状态，这个值和操作的依赖关系相关。
+
+**操作同步**
+
+* `- (void)waitUntilFinished` 阻塞当前线程，直到该操作结束。可用于线程执行顺序的同步。
+* `- (void)setCompletionBlock:(void (^)(void))block; completionBlock` 会在当前操作执行完毕时执行 completionBlock。
+* `- (void)addDependency:(NSOperation *)op` 添加依赖，使当前操作依赖于操作 op 的完成。
+* `- (void)removeDependency:(NSOperation *)op` 移除依赖，取消当前操作对操作 op 的依赖。
+* `@property (readonly, copy) NSArray<NSOperation *> *dependencies` 在当前操作开始执行之前完成执行的所有操作对象数组。
+
+
+
+##### NSOperationQueue 常用属性和方法
+
+**取消/暂停/恢复操作**
+
+* `- (void)cancelAllOperations` 可以取消队列的所有操作。
+* `- (BOOL)isSuspended` 判断队列是否处于暂停状态。 YES 为暂停状态，NO 为恢复状态。
+* `- (void)setSuspended:(BOOL)b` 可设置操作的暂停和恢复，YES 代表暂停队列，NO 代表恢复队列。
+
+**操作同步**
+
+* `- (void)waitUntilAllOperationsAreFinished` 阻塞当前线程，直到队列中的操作全部执行完毕。
+
+**添加/获取操作**
+
+* `- (void)addOperationWithBlock:(void (^)(void))block` 向队列中添加一个 NSBlockOperation 类型操作对象。
+* `- (void)addOperations:(NSArray *)ops waitUntilFinished:(BOOL)wait` 向队列中添加操作数组，wait 标志是否阻塞当前线程直到所有操作结束
+* `- (NSArray *)operations` 当前在队列中的操作数组（某个操作执行结束后会自动从这个数组清除）。
+* `- (NSUInteger)operationCount` 当前队列中的操作数。
+
+**获取队列**
+
+* `+ (id)currentQueue` 获取当前队列，如果当前线程不是在 NSOperationQueue 上运行则返回 nil。
+* `+ (id)mainQueue` 获取主队列。
+
+
 
 
 ## 四、iOS 线程间通信
@@ -539,3 +757,7 @@ Reference:
 > [iOS多线程：『GCD』详尽总结](https://juejin.im/post/5a90de68f265da4e9b592b40)
 > 
 > [陈爱彬小专栏](https://xiaozhuanlan.com/u/3785694919)
+> 
+> [Apple: Operation Queues](https://developer.apple.com/library/archive/documentation/General/Conceptual/ConcurrencyProgrammingGuide/OperationObjects/OperationObjects.html)
+> 
+> [NSOperation](https://developer.apple.com/documentation/foundation/nsoperation?language=occ)
