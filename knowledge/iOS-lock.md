@@ -1,5 +1,7 @@
 # iOS 中的锁
 
+![](https://github.com/loveway/iOS-Knowledge/blob/master/image/iOS-lock.png?raw=true)
+
 上图是 ibireme 在 [不再安全的 OSSpinLock](https://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/) 一文中列出的各种锁的性能对比，下面我们来逐个分析。
 ## iOS 中的各种锁
 ### 1. OSSpinLock
