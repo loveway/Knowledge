@@ -153,7 +153,138 @@ pthread_mutex_unlock(&mutex);//释放锁
 ```
 
 ### 5. NSLock
+NSLock 是一种低级别的锁，一旦获取到了锁，执行进入临界区，且不会允许超过一个线程并行执行，释放锁则意味着临界区结束。NSLock 在内部封装了一个 pthread_mutex，属性为 PTHREAD_MUTEX_ERRORCHECK，它会损失一定性能换来错误提示。
 
+```objc
+#define    MLOCK \
+- (void) lock\
+{\
+  int err = pthread_mutex_lock(&_mutex);\
+  // 错误处理 ……
+}
+```
+
+这里使用宏定义的原因是，OC 内部还有其他几种锁，他们的 lock 方法都是一模一样，仅仅是内部 pthread_mutex 互斥锁的类型不同。通过宏定义，可以简化方法的定义。
+
+NSLock 比 pthread_mutex 略慢的原因在于它需要经过方法调用，同时由于缓存的存在，多次方法调用不会对性能产生太大的影响。
+
+**需要注意的是使用 `unlock` 释放锁的时候必须是在同一个线程操作，不同线程释放锁会导致不可预知的行为。**
+
+还有就是你不可用 NSLock 来实现递归锁，在同一线程两次调用 `lock` 方法将锁死线程。你可以用 NSRecursiveLock 来实现递归锁。
+
+### 6. NSRecursiveLock
+
+递归锁也是通过 pthread_mutex_lock 函数来实现，在函数内部会判断锁的类型，如果显示是递归锁，就允许递归调用，仅仅将一个计数器加一，锁的释放过程也是同理。
+
+NSRecursiveLock 与 NSLock 的区别在于内部封装的 `pthread_mutex_t` 对象的类型不同，前者的类型为 `PTHREAD_MUTEX_RECURSIVE`。
+
+在调用 `lock` 之前， NSLock 必须先调用 `unlock`。正如名字所暗示的那样，NSRecursiveLock 允许在解锁前调用多次。如果解锁的次数与锁定的次数相匹配，则认定锁被释放，其他线程可以获取锁。
+
+当类中有多个方法使用同一个锁进行同步，且一个方法调用另一个方法时， NSRecursiveLock 就非常有用了
+
+```objc
+@property (nonatomic, strong) NSRecursiveLock *lock;
+
+...
+
+//初始化 lock
+_lock = [[NSRecursiveLock alloc] init];
+    
+- (void)func1 {
+    [_lock lock];//func1 获取锁
+    [self func2];
+    [_lock unlock];//释放锁
+}
+
+- (void)func2 {
+    [_lock lock];//func2 从已经获取到的锁中再次获取到锁
+    NSLog(@"do something thread safe !");
+    [_lock unlock];//释放锁
+}
+```
+
+如上代码，由于每个锁定操作都有一个与之相对应的解锁操作，所以锁是被释放成功的，并且可以被其他线程所获取。
+
+### 7. NSCondition
+
+NSCondition 的底层是通过条件变量(condition variable) `pthread_cond_t` 来实现的。条件变量有点像信号量，提供了线程阻塞与信号机制，因此可以用来阻塞某个线程，并等待某个数据就绪，随后唤醒线程，比如常见的生产者-消费者模式。
+
+```objc
+NSCondition *condition = [NSCondition new];
+NSMutableArray *collector = @[].mutableCopy;
+    
+dispatch_async(dispatch_get_global_queue(0, 0), ^{
+    while (1) {
+        [condition lock];
+        if (collector.count == 0) {
+            NSLog(@"consumer wait ...");
+            [condition wait];
+        }
+        [collector removeLastObject];
+        NSLog(@"consume a product.");
+        [condition unlock];
+    }
+
+});
+    
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    while (1) {
+        [condition lock];
+        [collector addObject:@"1"];
+        NSLog(@"produce %ld product.", collector.count);
+        [condition signal];
+        [condition unlock];
+        sleep(1);
+    }
+});
+```
+
+输出
+
+```objc
+2020-01-03 16:35:20.009392+0800 OC_test[21416:794029] produce 1 product.
+2020-01-03 16:35:20.009656+0800 OC_test[21416:794032] consume a product.
+2020-01-03 16:35:20.009959+0800 OC_test[21416:794032] consumer wait ...
+2020-01-03 16:35:21.014093+0800 OC_test[21416:794029] produce 1 product.
+2020-01-03 16:35:21.014283+0800 OC_test[21416:794032] consume a product.
+2020-01-03 16:35:21.014399+0800 OC_test[21416:794032] consumer wait ...
+2020-01-03 16:35:22.015470+0800 OC_test[21416:794029] produce 1 product.
+2020-01-03 16:35:22.015717+0800 OC_test[21416:794032] consume a product.
+2020-01-03 16:35:22.015956+0800 OC_test[21416:794032] consumer wait ...
+
+...
+
+```
+
+它需要与互斥锁配合使用:
+
+```objc
+void consumer () { // 消费者  
+    pthread_mutex_lock(&mutex);
+    while (data == NULL) {
+        pthread_cond_wait(&condition_variable_signal, &mutex); // 等待数据
+    }
+    // --- 有新的数据，以下代码负责处理 ↓↓↓↓↓↓
+    // temp = data;
+    // --- 有新的数据，以上代码负责处理 ↑↑↑↑↑↑
+    pthread_mutex_unlock(&mutex);
+}
+
+void producer () {  
+    pthread_mutex_lock(&mutex);
+    // 生产数据
+    pthread_cond_signal(&condition_variable_signal); // 发出信号给消费者，告诉他们有了新的数据
+    pthread_mutex_unlock(&mutex);
+}
+```
+
+自然我们会有疑问:“如果不用互斥锁，只用条件变量会有什么问题呢？”。问题在于，temp = data; 这段代码不是线程安全的，也许在你把 data 读出来以前，已经有别的线程修改了数据。因此我们需要保证消费者拿到的数据是线程安全的。
+
+为什么要使用 NSCondition？信号量可以一定程度上替代 condition，但是互斥锁不行。在以上给出的生产者-消费者模式的代码中， `pthread_cond_wait` 方法的本质是锁的转移，消费者放弃锁，然后生产者获得锁，同理，`pthread_cond_signal` 则是一个锁从生产者到消费者转移的过程。
+
+`[condition broadcast]` 方法会通知所有的等待线程，而 `signal` 只会通知一个线程。
+
+### 7. NSConditionLock
 
 
 Reference:
@@ -161,5 +292,5 @@ Reference:
 >
 > [深入理解 iOS 开发中的锁](https://bestswifter.com/ios-lock/)
 >
->
+> [NSLock](https://developer.apple.com/documentation/foundation/nslock)
 >
