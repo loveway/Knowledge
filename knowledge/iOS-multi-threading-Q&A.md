@@ -50,8 +50,8 @@ Reference:
 
 ## Q2、iOS 下如何实现指定线程数目的线程池？
 
-1.循环通过 pthread_create 创建线程，创建 s_tfthread 对象做为线程句，加入线程数组, s_tftask_content->methord 初始化为空函数
+1. 循环通过 pthread_create 创建线程，创建 s_tfthread 对象做为线程句，加入线程数组, s_tftask_content->methord 初始化为空函数
 
-2.创建任务执行函数，执行完通过task初始化函数后，在执行函数中通过 pthread_cond_wait 信号将当前创建的线程挂起
+2. 创建任务执行函数，执行完通过task初始化函数后，在执行函数中通过 pthread_cond_wait 信号将当前创建的线程挂起
 
-3.创建完之后，程序中将会有n个挂起状态的线程，当需要执行新的 task 的时候查找，我们就可以根据不同的 task 标志在 k_threads 中查询出空闲线程，并创建新的s_tftask_content 加入 s_tfthread 的任务列表，通过 pthread_cond_signal 重新唤醒该线程继续执行任务
+3. 创建完之后，程序中将会有n个挂起状态的线程，当需要执行新的 task 的时候查找，我们就可以根据不同的 task 标志在 k_threads 中查询出空闲线程，并创建新的s_tftask_content 加入 s_tfthread 的任务列表，通过 pthread_cond_signal 重新唤醒该线程继续执行任务
