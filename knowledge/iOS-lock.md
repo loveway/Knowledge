@@ -286,6 +286,114 @@ void producer () {
 
 ### 7. NSConditionLock
 
+NSConditionLock 借助 NSCondition 来实现，它的本质就是一个生产者-消费者模型。NSConditionLock 的内部持有一个 NSCondition 对象，以及 _condition_value 属性，在初始化时就会对这个属性进行赋值:
+
+```objc
+- (id) initWithCondition: (NSInteger)value {
+    if (nil != (self = [super init])) {
+        _condition = [NSCondition new]
+        _condition_value = value;
+    }
+    return self;
+}
+
+...
+
+- (void) lockWhenCondition: (NSInteger)value {
+    [_condition lock];
+    while (value != _condition_value) {
+        [_condition wait];
+    }
+}
+
+...
+
+- (void) unlockWithCondition: (NSInteger)value {
+    _condition_value = value;
+    [_condition broadcast];
+    [_condition unlock];
+}
+```
+
+使用 
+
+```objc
+#define START 1
+#define TASK_1_FINISHED 2
+#define TASK_2_FINISHED 3
+#define TASK_3_FINISHED 4
+#define TASK_4_FINISHED 5
+
+...
+
+//main thread
+   NSConditionLock *lock = [[NSConditionLock alloc] initWithCondition:START];
+
+   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+       [lock lockWhenCondition:START];
+       NSLog(@"first thread lock");
+       sleep(2);
+       NSLog(@"first thread unlock");
+       [lock unlockWithCondition:TASK_1_FINISHED];
+   });
+   
+   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+       [lock lockWhenCondition:TASK_1_FINISHED];
+       NSLog(@"second thread lock");
+       sleep(3);
+       NSLog(@"second thread unlock");
+       [lock unlockWithCondition:TASK_2_FINISHED];
+   });
+   
+   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+       [lock lockWhenCondition:TASK_2_FINISHED];
+       NSLog(@"third thread lock");
+       sleep(1);
+       NSLog(@"third thread unlock");
+       [lock unlockWithCondition:TASK_3_FINISHED];
+   });
+   
+   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+       [lock lockWhenCondition:TASK_4_FINISHED];
+       NSLog(@"fourth thread lock");
+       sleep(2);
+       NSLog(@"fourth thread unlock");
+       [lock unlockWithCondition:TASK_4_FINISHED];
+   });
+```
+
+输出
+
+```objc
+2020-01-06 16:51:52.938745+0800 OC_test[2462:92960] first thread lock
+2020-01-06 16:51:54.940206+0800 OC_test[2462:92960] first thread unlock
+2020-01-06 16:51:54.940708+0800 OC_test[2462:92963] second thread lock
+2020-01-06 16:51:57.941255+0800 OC_test[2462:92963] second thread unlock
+2020-01-06 16:51:57.941691+0800 OC_test[2462:92964] third thread lock
+2020-01-06 16:51:58.942492+0800 OC_test[2462:92964] third thread unlock
+```
+
+可以看到 `fourth thread lock` 和 `fourth thread unlock` 并没有输出，这是因为 线程3 走完条件变成了 `TASK_3_FINISHED`，而 线程4 上锁的条件是 `TASK_4_FINISHED`，所以并没有锁定。
+
+### 8. @synchronized
+
+这其实是一个 OC 层面的锁， 主要是通过牺牲性能换来语法上的简洁与可读。
+
+synchronized 中传入的 object 的内存地址，被用作 key，通过 hash map 对应的一个系统维护的递归锁。
+* synchronized 是使用的递归 mutex 来做同步。
+* `@synchronized(nil)` 不起任何作用
+
+慎用 `@synchronized(self)`，尽量粒度区分开，如下
+
+```objc
+@synchronized (tokenA) {
+    [arrA addObject:obj];
+}
+
+@synchronized (tokenB) {
+    [arrB addObject:obj];
+}
+```
 
 Reference:
 > [不再安全的 OSSpinLock](https://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/)
@@ -294,3 +402,6 @@ Reference:
 >
 > [NSLock](https://developer.apple.com/documentation/foundation/nslock)
 >
+> [关于 @synchronized，这儿比你想知道的还要多](http://yulingtianxia.com/blog/2015/11/01/More-than-you-want-to-know-about-synchronized/)
+> 
+> [正确使用多线程同步锁@synchronized()](http://mrpeak.cn/blog/synchronized/)
