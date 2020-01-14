@@ -99,7 +99,26 @@ KVC 和 属性访问器的对比如下：
 2020-01-09 17:21:17.075126+0800 OC_test[45253:1705348] name: uu, boy: 0 age: 18, readOnly: modify it to r and w 2, isTest: 0
 2020-01-09 17:21:17.075372+0800 OC_test[45253:1705348] name: uu, boy: 0 age: 18, readOnly: modify it to r and w 2, isTest: 1
 ```
-上面我们设置 `name`、`_name` 都可以改变 name 属性的原因在于 KVC 给一个对象赋值时，方法1调用的顺序如下：
+上面我们设置 `name`、`_name` 都可以改变 name 属性的原因在于 KVC 给一个对象赋值时，方法调用的顺序如下：
+
+###  1. 基础的 getter 的搜索模式（`(id)valueForKey:(NSString *)key`）
+1. 首先查找 getter 方法，如 `get<Key>`, `<key>`, `is<Key>`, `_<key>` 的拼接方案。按照这个顺序，如果发现符合的方法，就调用对应的方法并拿着结果跳转到第五步，否则，就继续到下一步。
+2. 如果没有找到简单的 getter 方法，则搜索其匹配模式的方法 `countOf<Key>`、`objectIn<Key>AtIndex:`、`<key>AtIndexes:`
+   如果找到其中的第一个和其他两个中的一个，则创建一个集合代理对象，该对象响应所有 NSArray 的方法并返回该对象。否则，继续到第三步。
+   代理对象随后将 NSArray 接收到的 `countOf<Key>`、`objectIn<Key>AtIndex:`、       `<key>AtIndexes:`的消息给符合 KVC 规则的调用方。当代理对象和KVC调用方通过上面方法一起工作时，就会允许其行为类似于NSArray一样
+3. 如果没有找到 NSArray 简单存取方法，或者 NSArray 存取方法组。则查找有没有 `countOf<Key>`、`enumeratorOf<Key>`、`memberOf<Key>:` 命名的方法。
+如果找到三个方法，则创建一个集合代理对象，该对象响应所有 NSSet 方法并返回。否则，继续执行第四步。
+此代理对象随后转换 `countOf<Key>`、`enumeratorOf<Key>`、`memberOf<Key>:` 方法调用到创建它的对象上。实际上，这个代理对象和 NSSet 一起工作，使得其表象上看起来是NSSet 。
+4. 如果没有发现简单 getter 方法，或集合存取方法组，以及接收类方法`accessInstanceVariablesDirectly` 是返回 YES 的。搜索一个名为 `_<key>`、`_is<Key>`、`<key>`、`is<Key>` 的实例，根据他们的顺序。如果发现对应的实例，则立刻获得实例可用的值并跳转到第五步，否则，跳转到第六步。
+5. 如果取回的是一个对象指针，则直接返回这个结果。如果取回的是一个基础数据类型，但是这个基础数据类型是被 NSNumber 支持的，则存储为 NSNumber 并返回。如果取回的是一个不支持 NSNumber 的基础数据类型，则通过 NSValue 进行存储并返回。
+6. 如果所有情况都失败，则调用 `valueForUndefinedKey:` 方法并抛出异常，这是默认行为。但是子类可以重写此方法。
+
+### 2. 基础的 setter 的搜索模式（`(void)setValue:(id)value forKey:(NSString *)key`）
+1. 查找 `set<Key>:` 或 `_set<Key>` 命名的 setter，按照这个顺序，如果找到的话，调用这个方法并将值传进去(根据需要进行对象转换)。
+2. 如果没有发现一个简单的 setter，但是 `accessInstanceVariablesDirectly` 类属性返回 YES，则查找一个命名规则为 `_<key>`、`_is<Key>`、`<key>`、`is<Key>` 的实例变量。根据这个顺序，如果发现则将 value 赋值给实例变量。
+3. 如果没有发现 setter 或实例变量，则调用 `setValue:forUndefinedKey:` 方法，并默认提出一个异常，但是一个 NSObject 的子类可以提出合适的行为。
+
+
 
 
 Reference:
