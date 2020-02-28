@@ -140,8 +140,11 @@ UIWindow 有一个 MainVIew，MainView 里面有三个 subView：view A、view B
 > Tips:
 > 关于 `CGRectInset` 和 `CGRectOffset` 的对比如下:
 > `CGRectInset`
->
+> 
 > ![CGRectInset](https://github.com/loveway/iOS-Knowledge/blob/master/image/CGRectInset.png?raw=true)
+> 
+> `CGRectOffset`
+> 
 > ![CGRectInset](https://github.com/loveway/iOS-Knowledge/blob/master/image/CGRectOffset.png?raw=true)
 
 ### 2、将触摸事件传递到下面的视图
