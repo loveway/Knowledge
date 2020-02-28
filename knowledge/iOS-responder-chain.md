@@ -105,9 +105,65 @@ UIWindow 有一个 MainVIew，MainView 里面有三个 subView：view A、view B
 
 ![hit-test-flowchart](https://github.com/loveway/iOS-Knowledge/blob/master/image/hit-test-flowchart.png?raw=true)
 
+## 三、Hit-Test 的应用
 
+### 1、扩大视图的响应区域
 
+我们经常会遇到产品要求扩大按钮点击范围的这种需求，在我们了解响应链之后，我们就可以通过重写 `hittest:withEvent` 方法来达到这个目的，代码如下
 
+```objc
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+
+    if (!self.isUserInteractionEnabled || self.hidden || self.alpha <= 0.01) {
+        return nil;
+    }
+    //扩大响应区域
+    CGRect touchRect = CGRectInset(self.bounds, -20, -20);
+    if (CGRectContainsPoint(touchRect, point)) {
+        for (UIView *subView in [self.subviews reverseObjectEnumerator]) {
+            CGPoint coverPoint = [subView convertPoint:point fromView:self];
+            UIView *hitView = [subView hitTest:coverPoint withEvent:event];
+            if (hitView) {
+                return hitView;
+            }
+        }
+        return self;
+    }
+    return nil;
+}
+```
+
+Tips:
+> 关于 `CGRectInset` 和 `CGRectOffset` 的对比如下
+>
+>
+>
+
+### 2、将触摸事件传递到下面的视图
+
+如果有 view A 和 view B，view B 有一部分覆盖 view A 上面，点击重叠区域那么肯定是 view B 响应，如果我们想让 view A 响应该如何做呢？这个时候我们可以通过重写 view B 的 `hittest:withEvent` 方法达到目的
+```objc
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hitTestView = [super hitTest:point withEvent:event];
+    if (hitTestView == self) {
+        hitTestView = nil;
+    }
+    return hitTestView;
+}
+```
+### 3、将触摸事件传递给子视图
+
+如图，蓝色的 scrollView 设置 pagingEnabled 使得 image 停止滚动后都会固定在居中的位置，如果在 scrollView 的左边或者右边活动，发现 scrollView 是无法滚动的，原因就是 Hit-Test 里面没有满足 pointInSide 这个条件，scrollView 的 bounds 只有蓝色的区域。这个时候重写 `hittest:withEvent`，然后返回 scrollView 即可解决问题。
+
+```objc
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hitTestView = [super hitTest:point withEvent:event];
+    if (hitTestView) {
+        hitTestView = self.scrollView;
+    }
+    return hitTestView;
+}
+```
 Reference:
 > [Responder object](https://developer.apple.com/library/archive/documentation/General/Conceptual/Devpedia-CocoaApp/Responder.html)
 > 
