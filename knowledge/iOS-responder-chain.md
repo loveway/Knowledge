@@ -140,6 +140,7 @@ UIWindow 有一个 MainVIew，MainView 里面有三个 subView：view A、view B
 > Tips:
 > 
 > 关于 `CGRectInset` 和 `CGRectOffset` 的对比如下:
+> 
 > `CGRectInset` （`CGRectInset(view.frame, 20, 20)`）
 > 
 > ![CGRectInset](https://github.com/loveway/iOS-Knowledge/blob/master/image/CGRectInset.png?raw=true)
