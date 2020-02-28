@@ -181,6 +181,7 @@ UIWindow 有一个 MainVIew，MainView 里面有三个 subView：view A、view B
 
 有了响应链，并且找到了第一个响应事件的对象，接下来就是把事件发送个这个响应者了。 UIApplication 中有个 `sendEvent:` 的方法，在 UIWindow 中同样也可以发现一个同样的方法。UIApplication 是通过这个方法把事件发送给 UIWindow，然后 UIWindow 通过同样的接口，把事件发送给 Hit-Testing View，如下
 
+![hit-test-pass-touches-to-subviews](https://github.com/loveway/iOS-Knowledge/blob/master/image/hit-test-touch-event-flow.png?raw=true)
 
 Reference:
 > [Responder object](https://developer.apple.com/library/archive/documentation/General/Conceptual/Devpedia-CocoaApp/Responder.html)
