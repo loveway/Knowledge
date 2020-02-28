@@ -5,7 +5,9 @@ iOS 常见的事件分为以下几类
 * **Remote Events （远程事件，比如用耳机上得按键来控制手机）**
 
 这里我们主要来说一说 **Touch Events**，一说到事件的传递我们肯定就会说到响应链，无论哪种事件的传递都与响应链息息相关。下面我们来围绕几个问题一步步了解事件的传递机制
+
 ## 一、响应链是怎么构造的
+
 我们常见的 UIView、UIViewController 以及 UIApplication 都是继承与 UIResponder 的，UIResponder 类如下
 ```objc
 UIKIT_EXTERN API_AVAILABLE(ios(2.0)) @interface UIResponder : NSObject <UIResponderStandardEditActions>
@@ -36,7 +38,8 @@ UIKIT_EXTERN API_AVAILABLE(ios(2.0)) @interface UIResponder : NSObject <UIRespon
 我们可以看到有一个 `nextResponder` 这个属性，那就说明继承与 UIResponder 的 UIView、UIViewController 以及 UIApplication 都会有这个属性。UIResponder 是所有响应类的基类，响应链的构建和 UIResponder 是密不可分的。
 
 实际上我们 APP 的视图的构建是树状层次结构构建起来的，每一个视图（view）都会有它的父视图（superView），当一个 view 被添加到它的 superView 上面的时候，这个 view 的 nextResponder 就会指向它的 superView，当一个 viewController 被创建的时候，它的视图（self.view）的 nextResponder 会指向这个 viewController，viewController 的 nextResponder 会指向它视图（self.view）的父视图 (UIWindow)，下面这张图可以看清整个流程。
-![]()
+
+![responder-chain](https://github.com/loveway/iOS-Knowledge/blob/master/image/responder-chain.png?raw=true)
 
 传递过程需要注意以下几点:
 1. 判断当前视图是否为控制器（viewController）的 view。如果是，事件就传递给控制器（viewController）；如果不是，事件就传递给它的父控件（superView）
@@ -45,6 +48,7 @@ UIKIT_EXTERN API_AVAILABLE(ios(2.0)) @interface UIResponder : NSObject <UIRespon
 4. 如果 UIApplication 对象也不处理，则将事件丢弃
 
 ## 二、如何找到具体的响应者
+
 开头我们了解到 iOS 有三种 event 类型，事件传递中 UIWindow 会根据不同的 event，用不同的方式寻找 initial object，initial object 决定于当前的事件类型。比如 Touch Event，UIWindow 会首先试着把事件传递给事件发生的那个 view，就是下面要说的 Hit-Testing View。对于 Motion 和Remote Event，UIWindow 会把例如震动或者远程控制的事件传递给当前的 firstResponder。
 
 上面我们了解到了响应链的相关知识，那么接下来就是响应者了，系统如何知道我们点击了屏幕的哪一个 view 呢？这里我们就要说一下 Hit-Test，Hit-Test 可以理解为是一个探测器，帮助我们找到相应的 view，这个过程就是 Hit-Test，找到的 view 我们称之为 Hit-Testing View。
@@ -60,7 +64,12 @@ UIKIT_EXTERN API_AVAILABLE(ios(2.0)) @interface UIResponder : NSObject <UIRespon
 
 Hit-Test 是采用递归的方法从 view 层级的根节点开始遍历，如下
 
+![hit-test-view-hierarchy](https://github.com/loveway/iOS-Knowledge/blob/master/image/hit-test-view-hierarchy.png?raw=true)
+
+
 UIWindow 有一个 MainVIew，MainView 里面有三个 subView：view A、view B、view C，他们各自有两个 subView，他们层级关系是：view A 在最下面，view B 中间，view C 最上(也就是 addSubview 的顺序，越晚 add 进去越在上面)，其中 view A 和 view B 有一部分重叠。如果手指在 view B.1 和 view A.2 重叠的上面点击，按照上面说的递归方式，顺序如下图所示：
+
+![hit-test-depth-first-traversal](https://github.com/loveway/iOS-Knowledge/blob/master/image/hit-test-depth-first-traversal.png?raw=true)
 
 递归是向界面的根节点 UIWindow 发送 `hitTest:withEvent:` 消息开始的，从这个消息返回的是一个 UIView，也就是手指当前位置最前面的那个 Hit-Testing View。 当向  UIWindow 发送 `hitTest:withEvent:` 消息时，`hitTest:withEvent:` 里面所做的事，就是判断当前的点击位置是否在 window 里面，如果在则遍历 window 的 subview 然后依次对 subview 发送 `hitTest:withEvent:` 消息(注意这里给 subview 发送消息是根据当前 subview 的 index 顺序，index 越大就越先被访问)。如果当前的 point 没有在view 上面，那么这个 view 的 subview 也就不会被遍历了。
 
@@ -94,6 +103,7 @@ UIWindow 有一个 MainVIew，MainView 里面有三个 subView：view A、view B
 
 逻辑图如下
 
+![hit-test-flowchart](https://github.com/loveway/iOS-Knowledge/blob/master/image/hit-test-flowchart.png?raw=true)
 
 
 
