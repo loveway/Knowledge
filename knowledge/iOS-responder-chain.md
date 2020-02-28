@@ -109,7 +109,11 @@ UIWindow 有一个 MainVIew，MainView 里面有三个 subView：view A、view B
 
 ### 1、扩大视图的响应区域
 
-我们经常会遇到产品要求扩大按钮点击范围的这种需求，在我们了解响应链之后，我们就可以通过重写 `hittest:withEvent` 方法来达到这个目的，代码如下
+我们经常会遇到产品要求扩大按钮点击范围的这种需求，在我们了解响应链之后，我们就可以通过重写 `hittest:withEvent` 方法来达到这个目的，
+
+![hit-test-increase-touch-area](https://github.com/loveway/iOS-Knowledge/blob/master/image/hit-test-increase-touch-area.png?raw=true)
+
+代码如下
 
 ```objc
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
@@ -133,11 +137,12 @@ UIWindow 有一个 MainVIew，MainView 里面有三个 subView：view A、view B
 }
 ```
 
-Tips:
-> 关于 `CGRectInset` 和 `CGRectOffset` 的对比如下
+> Tips:
+> 关于 `CGRectInset` 和 `CGRectOffset` 的对比如下:
+> `CGRectInset`
 >
->
->
+> ![CGRectInset](https://github.com/loveway/iOS-Knowledge/blob/master/image/CGRectInset.png?raw=true)
+> ![CGRectInset](https://github.com/loveway/iOS-Knowledge/blob/master/image/CGRectOffset.png?raw=true)
 
 ### 2、将触摸事件传递到下面的视图
 
@@ -152,6 +157,8 @@ Tips:
 }
 ```
 ### 3、将触摸事件传递给子视图
+
+![hit-test-pass-touches-to-subviews](https://github.com/loveway/iOS-Knowledge/blob/master/image/hit-test-pass-touches-to-subviews.png?raw=true)
 
 如图，蓝色的 scrollView 设置 pagingEnabled 使得 image 停止滚动后都会固定在居中的位置，如果在 scrollView 的左边或者右边活动，发现 scrollView 是无法滚动的，原因就是 Hit-Test 里面没有满足 pointInSide 这个条件，scrollView 的 bounds 只有蓝色的区域。这个时候重写 `hittest:withEvent`，然后返回 scrollView 即可解决问题。
 
