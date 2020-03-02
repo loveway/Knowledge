@@ -76,6 +76,94 @@ typedef NS_OPTIONS(NSUInteger, NSKeyValueObservingOptions) {
 
 ### 2、触发方式
 
+KVO 默认的是自动触发的，但是有时候我们改变了对象的一个值，并不想收到通知，那么该怎么办呢？我们可以在 `NSObject(NSKeyValueObservingCustomization)` 里面看到 `+ (BOOL)automaticallyNotifiesObserversForKey:(NSString *)key` 这个方法，这个方法默认返回为 YES，也就是自动触发 KVO，我们可以在子类中重写这个方法，如下
+
+```objc
++ (BOOL)automaticallyNotifiesObserversForKey:(NSString *)key {
+    return NO;
+}
+```
+
+当我们在我们之前的 Person 类中重写了这个方法以后，重新运行项目点击屏幕，发现没有接收到值改变的信息，这是因为因为我们把触发模式改成了手动触发。如果 `automaticallyNotifiesObserversForKey` 设置为 NO，此刻仍然想收到通知，我们只有手动触发了，代码如下
+```objc
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    
+    [_p willChangeValueForKey:@"name"];
+    _p.name = @"mm";
+    [_p didChangeValueForKey:@"name"];
+}
+```
+
+这样我们点击屏幕就可以重新收到消息了。下面我们来思考一个问题，我们把 `_p.name = @"mm";` 这行代码去掉，点击屏幕还会不会触发 KVO？如下
+
+```objc
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    
+    [_p willChangeValueForKey:@"name"];
+//    _p.name = @"mm";
+    [_p didChangeValueForKey:@"name"];
+}
+```
+
+测试以后我们发现仍然会收到通知，这说明 KVO 的触发与属性有没有赋值没有关系，与 `willChangeValueForKey` 和 `didChangeValueForKey` 这两个方法的调用有关系。
+不过我们手动触发的时候一般不直接全部返回 NO，我们一般自己过滤一下，如下
+
+```objc
++ (BOOL)automaticallyNotifiesObserversForKey:(NSString *)key {
+    
+    if ([key isEqualToString:@"name"]) {
+        return NO;
+    }
+    return YES;
+}
+```
+
+### 3、属性依赖
+
+现在我们新建一个 Man 类，里面有 age、address 两个属性，然后在 Person 里面创建一个 man 属性，如下
+```objc
+@interface Person : NSObject
+
+@property (nonatomic, copy) NSString *name;
+@property (nonatomic, strong) Man *man;
+
+@end
+
+...
+
+@interface Man : NSObject
+
+@property (nonatomic, assign) NSInteger age;
+@property (nonatomic, copy) NSString *address;
+
+@end
+```
+
+我们重写 Person 的 `init` 方法
+
+```objc
+- (instancetype)init {
+    if (self == [super init]) {
+        _man = [[Man alloc] init];
+    }
+    return self;
+}
+```
+
+如果我想观察 person 的 dog 的 age 属性，如下
+
+```objc
+[_p addObserver:self forKeyPath:@"dog.age" options:NSKeyValueObservingOptionNew context:nil];
+```
+
+如果我想同时观察 age 和 address 属性呢，那么我就这样
+
+```objc
+[_p addObserver:self forKeyPath:@"dog.age" options:NSKeyValueObservingOptionNew context:nil];
+[_p addObserver:self forKeyPath:@"dog.address" options:NSKeyValueObservingOptionNew context:nil];
+```
+
+那么有的童鞋就有疑问了，如果同时观察多了属性，这样写是不是就很不优雅，有没有一种简洁优雅的写法可以同时观察多个属性，答案是有的
 
 Reference：
 > [Key-Value Observing Implementation Details](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueObserving/Articles/KVOImplementation.html)
