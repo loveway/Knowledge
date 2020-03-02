@@ -209,11 +209,15 @@ KVO 默认的是自动触发的，但是有时候我们改变了对象的一个�
 
 为了探究 KVO 的原理,我们来做一个实验，我们在添加监听的时候打个断点，如下
 
+![kvo-break-point](https://github.com/loveway/iOS-Knowledge/blob/master/image/kvo-break-point.png?raw=true)
+
 此时我们去打印一下 _p 的 isa 指针，然后进行下一步，在打印 isa，会发现如下
+
+![kvo-isa-change](https://github.com/loveway/iOS-Knowledge/blob/master/image/kvo-isa-change.png?raw=true)
 
 我们发现在给 p 对象添加监听以后，其 isa 指针发生了变化，由原来指向的 Person 变成了 NSKVONotifying_Person，那么这个 NSKVONotifying_Person 又是个东西呢？为什么会发生这种变化？
 
-这是因为在给 p 对象添加监听以后，runtime 会动态的创建一个叫 NSKVONotifying_Person 的类，该类继承于 Person，此时将 _p 的 isa 指针改变指向 NSKVONotifying_Person，然后调用 NSKVONotifying_Person 中重写的 `setName:` 方法，`setName:` 方法调用 Foundation 框架的 `_NSSetObjectValueAndNotify` 方法，然后 `_NSSetObjectValueAndNotify` 方法内部的实现是依次调用 `willChangeValueForKey`、父类的 `setName:` 方法、`didChangeValueForKey` 方法，最后调用 `observeValueForKeyPath:ofObject:change:context:` 方法完成通知流程，这就是 KVO 的原理,流程大致如下
+**这是因为在给 p 对象添加监听以后，runtime 会动态的创建一个叫 NSKVONotifying_Person 的类，该类继承于 Person，此时将 _p 的 isa 指针改变指向 NSKVONotifying_Person，然后调用 NSKVONotifying_Person 中重写的 `setName:` 方法，`setName:` 方法调用 Foundation 框架的 `_NSSetObjectValueAndNotify` 方法，然后 `_NSSetObjectValueAndNotify` 方法内部的实现是依次调用 `willChangeValueForKey`、父类的 `setName:` 方法、`didChangeValueForKey` 方法，最后调用 `observeValueForKeyPath:ofObject:change:context:` 方法完成通知流程，这就是 KVO 的原理**,流程大致如下
 
 ```objc
 #import "NSKVONotifying_Person.h"
@@ -241,6 +245,8 @@ void _NSSetObjectValueAndNotify() {
 ```
 
 通过打印消息，我们可以简单验证一下
+
+![kvo-fundation-imp](https://github.com/loveway/iOS-Knowledge/blob/master/image/kvo-fundation-imp.png?raw=true)
 
 需要注意的是如果我们创建了 NSKVONotifying_Person 这个子类，然后再去添加监听，会出现以下错误
 
