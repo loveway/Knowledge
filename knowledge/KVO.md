@@ -213,7 +213,7 @@ KVO 默认的是自动触发的，但是有时候我们改变了对象的一个�
 
 我们发现在给 p 对象添加监听以后，其 isa 指针发生了变化，由原来指向的 Person 变成了 NSKVONotifying_Person，那么这个 NSKVONotifying_Person 又是个东西呢？为什么会发生这种变化？
 
-这是因为在给 p 对象添加监听以后，runtime 会动态的创建一个叫 NSKVONotifying_Person 的类，该类继承于 Person，此时将 _p 的 isa 指针改变指向 NSKVONotifying_Person，然后调用 NSKVONotifying_Person 中重写的 `setName:` 方法，`setName:` 方法调用 Fundation 框架的 `_NSSetObjectValueAndNotify` 方法，然后 `_NSSetObjectValueAndNotify` 方法内部的实现是依次调用 `willChangeValueForKey`、父类的 `setName:` 方法、`didChangeValueForKey` 方法，最后调用 `observeValueForKeyPath:ofObject:change:context:` 方法完成通知流程，这就是 KVO 的原理,流程大致如下
+这是因为在给 p 对象添加监听以后，runtime 会动态的创建一个叫 NSKVONotifying_Person 的类，该类继承于 Person，此时将 _p 的 isa 指针改变指向 NSKVONotifying_Person，然后调用 NSKVONotifying_Person 中重写的 `setName:` 方法，`setName:` 方法调用 Foundation 框架的 `_NSSetObjectValueAndNotify` 方法，然后 `_NSSetObjectValueAndNotify` 方法内部的实现是依次调用 `willChangeValueForKey`、父类的 `setName:` 方法、`didChangeValueForKey` 方法，最后调用 `observeValueForKeyPath:ofObject:change:context:` 方法完成通知流程，这就是 KVO 的原理,流程大致如下
 
 ```objc
 #import "NSKVONotifying_Person.h"
@@ -222,7 +222,7 @@ KVO 默认的是自动触发的，但是有时候我们改变了对象的一个�
 
 //isa 指向 NSKVONotifying_Person，调用子类 NSKVONotifying_Person 的 setter 方法
 - (void)setName:(NSString *)name {
-    // setter 方法调用 Fundation 的 c 函数，设置的值不同调用的函数不同，比如还有 _NSSetBoolValueAndNotify、_NSSetFloatValueAndNotify 等
+    // setter 方法调用 Foundation 的 c 函数，设置的值不同调用的函数不同，比如还有 _NSSetBoolValueAndNotify、_NSSetFloatValueAndNotify 等（可以找到 Foundation 用 nm Foundation | grep ValueAndNotify 命令查看）
     _NSSetObjectValueAndNotify();
 }
 
@@ -236,12 +236,23 @@ void _NSSetObjectValueAndNotify() {
 
 - (void)didChangeValueForKey:(NSString *)key {
     //通知观察者属性改变
-    [oberser observeValueForKeyPath:key ofObject:self change:nil context:nil];
+    [observer observeValueForKeyPath:key ofObject:self change:nil context:nil];
 }
 ```
 
+通过打印消息，我们可以简单验证一下
 
+需要注意的是如果我们创建了 NSKVONotifying_Person 这个子类，然后再去添加监听，会出现以下错误
+
+```objc
 2020-03-02 16:15:50.328074+0800 OC_test[16550:163923] [general] KVO failed to allocate class pair for name NSKVONotifying_Person, automatic key-value observing will not work for this class
+```
+
+说是 KVO 创建 NSKVONotifying_Person 失败，KVO 不会生效（记得之前都是crash，然后说已存在 NSKVONotifying_Person 这个类，估计现在改进了）。
+
+
+
+
 
 
 Reference：
