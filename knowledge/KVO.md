@@ -150,20 +150,99 @@ KVO 默认的是自动触发的，但是有时候我们改变了对象的一个�
 }
 ```
 
-如果我想观察 person 的 dog 的 age 属性，如下
+如果我想观察 person 的 man 的 age 属性，如下
 
 ```objc
-[_p addObserver:self forKeyPath:@"dog.age" options:NSKeyValueObservingOptionNew context:nil];
+[_p addObserver:self forKeyPath:@"man.age" options:NSKeyValueObservingOptionNew context:nil];
 ```
 
 如果我想同时观察 age 和 address 属性呢，那么我就这样
 
 ```objc
-[_p addObserver:self forKeyPath:@"dog.age" options:NSKeyValueObservingOptionNew context:nil];
-[_p addObserver:self forKeyPath:@"dog.address" options:NSKeyValueObservingOptionNew context:nil];
+[_p addObserver:self forKeyPath:@"man.age" options:NSKeyValueObservingOptionNew context:nil];
+[_p addObserver:self forKeyPath:@"man.address" options:NSKeyValueObservingOptionNew context:nil];
 ```
 
-那么有的童鞋就有疑问了，如果同时观察多了属性，这样写是不是就很不优雅，有没有一种简洁优雅的写法可以同时观察多个属性，答案是有的
+那么有的童鞋就有疑问了，如果同时观察多了属性，这样写是不是就很不优雅，有没有一种简洁优雅的写法可以同时观察多个属性，答案是有的，如下
+
+```objc
++ (NSSet<NSString *> *)keyPathsForValuesAffectingValueForKey:(NSString *)key {
+    NSSet *keyPath = [super keyPathsForValuesAffectingValueForKey:key];
+    if ([key isEqualToString:@"man"]) {
+        keyPath = [NSSet setWithObjects:@"_man.age", @"_man.address", nil];
+    }
+    return keyPath;
+}
+```
+
+或
+
+```objc
++ (NSSet<NSString *> *)keyPathsForValuesAffectingMan {
+    return [NSSet setWithObjects:@"_man.age", @"_man.address", nil];
+}
+```
+
+只监听 man 属性就可以收到 age 和 address 的改变值，结果如下
+
+上面这两种方式都可以实现只观察 man 属性，就可以监听到 age 和 address 的变化，这就是属性依赖，如果 Person 还有有 name 和 firstName、lastName 三个属性，想 name 改变就监听到 firstName、lastName 改变，可以如下
+
+```objc
++ (NSSet<NSString *> *)keyPathsForValuesAffectingName {
+    return [NSSet setWithObjects:@"firstName", @"lastName", nil];
+}
+```
+
+或
+
+```objc
++ (NSSet<NSString *> *)keyPathsForValuesAffectingValueForKey:(NSString *)key {
+    NSSet *keyPath = [super keyPathsForValuesAffectingValueForKey:key];
+    if ([key isEqualToString:@"name"]) {
+        keyPath = [keyPath setByAddingObjectsFromArray:@[@"firstName", @"lastName"]];
+    }
+    return keyPath;
+}
+```
+
+## 三、KVO 的原理
+
+为了探究 KVO 的原理,我们来做一个实验，我们在添加监听的时候打个断点，如下
+
+此时我们去打印一下 _p 的 isa 指针，然后进行下一步，在打印 isa，会发现如下
+
+我们发现在给 p 对象添加监听以后，其 isa 指针发生了变化，由原来指向的 Person 变成了 NSKVONotifying_Person，那么这个 NSKVONotifying_Person 又是个东西呢？为什么会发生这种变化？
+
+这是因为在给 p 对象添加监听以后，runtime 会动态的创建一个叫 NSKVONotifying_Person 的类，该类继承于 Person，此时将 _p 的 isa 指针改变指向 NSKVONotifying_Person，然后调用 NSKVONotifying_Person 中重写的 `setName:` 方法，`setName:` 方法调用 Fundation 框架的 `_NSSetObjectValueAndNotify` 方法，然后 `_NSSetObjectValueAndNotify` 方法内部的实现是依次调用 `willChangeValueForKey`、父类的 `setName:` 方法、`didChangeValueForKey` 方法，最后调用 `observeValueForKeyPath:ofObject:change:context:` 方法完成通知流程，这就是 KVO 的原理,流程大致如下
+
+```objc
+#import "NSKVONotifying_Person.h"
+
+...
+
+//isa 指向 NSKVONotifying_Person，调用子类 NSKVONotifying_Person 的 setter 方法
+- (void)setName:(NSString *)name {
+    // setter 方法调用 Fundation 的 c 函数，设置的值不同调用的函数不同，比如还有 _NSSetBoolValueAndNotify、_NSSetFloatValueAndNotify 等
+    _NSSetObjectValueAndNotify();
+}
+
+void _NSSetObjectValueAndNotify() {
+    //依次调用
+    [self willChangeValueForKey:@"name"];
+    //这儿调用父类的 setter 方法
+    [super setName:name];
+    [self didChangeValueForKey:@"name"];
+}
+
+- (void)didChangeValueForKey:(NSString *)key {
+    //通知观察者属性改变
+    [oberser observeValueForKeyPath:key ofObject:self change:nil context:nil];
+}
+```
+
+
+2020-03-02 16:15:50.328074+0800 OC_test[16550:163923] [general] KVO failed to allocate class pair for name NSKVONotifying_Person, automatic key-value observing will not work for this class
+
 
 Reference：
 > [Key-Value Observing Implementation Details](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueObserving/Articles/KVOImplementation.html)
