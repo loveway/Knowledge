@@ -256,6 +256,8 @@ void _NSSetObjectValueAndNotify() {
 
 说是 KVO 创建 NSKVONotifying_Person 失败，KVO 不会生效（记得之前都是crash，然后说已存在 NSKVONotifying_Person 这个类，估计现在改进了）。
 
+## 四、如何手动实现 KVO
+
 
 
 
@@ -263,3 +265,10 @@ void _NSSetObjectValueAndNotify() {
 
 Reference：
 > [Key-Value Observing Implementation Details](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueObserving/Articles/KVOImplementation.html)
+> 
+> [class_addMethod](https://developer.apple.com/documentation/objectivec/1418901-class_addmethod?language=objc)
+> 
+> [Objective-C Runtime Programming Guide：Type Encodings
+](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100)
+>
+> [iOS底层原理总结 - 探寻KVO本质](https://juejin.im/post/5adab70cf265da0b736d37a8)
