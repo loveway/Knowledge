@@ -258,10 +258,112 @@ void _NSSetObjectValueAndNotify() {
 
 ## 四、如何手动实现 KVO
 
+上面我们知道了 KVO 的实现原理，下面我来来模拟实现一个 KVO，我新建一个 NSObject+MMKVO 的 category，代码如下
 
+```objc
+#import "NSObject+MMKVO.h"
+#import <objc/message.h>
 
+@implementation NSObject (MMKVO)
 
+- (void)mm_addObserver:(NSObject *)observer forKeyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options context:(void *)context {
+    
+    NSString *oldClassName = NSStringFromClass(self.class);
+    NSString *newClassName = [NSString stringWithFormat:@"MMKVONotifying_%@", oldClassName];
+    //1、创建一个类名为 MMKVONotifying_ 前缀的子类
+    Class newClass = objc_allocateClassPair(self.class, newClassName.UTF8String, 0);
+    //2、注册新类
+    objc_registerClassPair(newClass);
+    //3、重写子类的 setName: 方法，其实也就是给子类添加一个 setName: 方法（新的类继承于父类，但是其实子类中并没有父类的方法，我们平时能在子类中重写父类的方法其实也就是在子类中没查找到，最后查找到父类的方法）
+    class_addMethod(newClass, @selector(setName:), (IMP)mm_setName, "v@:@");
+    //4、修改 isa 指针
+    object_setClass(self, newClass);
+    //5、绑定 observer 到当前对象，以便后面通知给观察者
+    objc_setAssociatedObject(self, @selector(setName:), observer, OBJC_ASSOCIATION_ASSIGN);
+}
 
+void mm_setName(id self, SEL _cmd, NSString *name) {
+    
+    //1、拿到当前类，也就是子类，因为前面修改了 isa 指针指向子类
+    Class class = [self class];
+    //2、修改 isa 指向父类
+    object_setClass(self, class_getSuperclass(class));
+    //3、父类调用 setName: (这里需要做个类型强转, 否则会报too many argument的错误)
+    ((void (*)(id, SEL, id))objc_msgSend)(self, @selector(setName:), name);
+    //4、拿到观察者，发送通知
+    id observer = objc_getAssociatedObject(self, @selector(setName:));
+    if (observer) {
+        ((void (*)(id, SEL, id, id, id, id))objc_msgSend)(observer,
+                                                          @selector(observeValueForKeyPath:ofObject:change:context:),
+                                                          @"name", name,
+                                                          @{@"new": name, @"kind": @1},
+                                                          nil);
+    }
+    //5、把 isa 改回来
+    object_setClass(self, class);
+    
+    /**
+     上面的2、3、5 步也可以直接用
+     ((void (*)(id, SEL, id))objc_msgSendSuper)(class, @selector(setName:), name);
+     方法，这样就不用把 isa 改来改去
+     */
+}
+
+@end
+```
+
+里面的的过程我都有注释，当然只是模拟实现，有很多细节性问题这里不多赘述。如果需要验证整个过程，你可在 [iOS-Knowledge-Example-Code](https://github.com/loveway/iOS-Knowledge-Example-Code) 中找到 KVO-Manual 查看源码。里面具体的 runtime 相关内容我们会放在 runtime 章节具体讲解。
+
+## 五、KVO 监听容器类的变化
+
+现在我们在 Person 类中添加一个 array 属性，并重写 `init` 初始化 array
+```
+@interface Person : NSObject
+@property (nonatomic, copy) NSString *name;
+@property (nonatomic, strong) NSMutableArray *array;
+@end
+
+...
+
+@implementation Person
+
+- (instancetype)init {
+    if (self == [super init]) {
+        _array = @[].mutableCopy;
+    }
+    return self;
+}
+@end
+```
+
+现在我们给 p 的 array 属性添加监听，并且点击屏幕改变 array
+
+```objc
+[_p addObserver:self forKeyPath:@"array" options:NSKeyValueObservingOptionNew context:nil];
+
+...
+
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+
+    [_p.array addObject:@"1"];
+}
+```
+
+我们发现并没有收到监听，我们修改一下代码，如下
+
+```objc
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+
+    NSMutableArray *tempArray = [_p mutableArrayValueForKey:@"array"];
+    [tempArray addObject:@"1"];
+}
+```
+
+此时发现监听到了 array 的变化，那么原因是什么呢？我们打断点调试发现
+
+tempArray 变成了 NSKeyValueNotifyingMutableArray 这个类型，同理上面的对象类型，我们可以猜测应该也是重写了子类的方法然后调用 `willChangeValueForKey` 和 `didChangeValueForKey` 。
+
+最后，关于 KVO 的内容基本就到这里了，你有可能会感觉 KVO 这么繁琐，我得 add、remove 一对操作就为了监听一个属性，有没有更加简便的方式呢？答案是有的，有情趣的童鞋可以去了解下 [ReactiveCocoa](https://github.com/ReactiveCocoa/ReactiveCocoa)，看看它是如何优雅的实现监听的。
 
 Reference：
 > [Key-Value Observing Implementation Details](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueObserving/Articles/KVOImplementation.html)
