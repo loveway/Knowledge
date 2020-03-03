@@ -359,7 +359,15 @@ void mm_setName(id self, SEL _cmd, NSString *name) {
 }
 ```
 
+![kvo-fundation-imp](https://github.com/loveway/iOS-Knowledge/blob/master/image/kvo-observe-array-1.png?raw=true)
+
 此时发现监听到了 array 的变化，那么原因是什么呢？我们打断点调试发现
+
+![kvo-fundation-imp](https://github.com/loveway/iOS-Knowledge/blob/master/image/kvo-observe-array-2.png?raw=true)
+
+往下走一步
+
+![kvo-fundation-imp](https://github.com/loveway/iOS-Knowledge/blob/master/image/kvo-observe-array-3.png?raw=true)
 
 tempArray 变成了 NSKeyValueNotifyingMutableArray 这个类型，同理上面的对象类型，我们可以猜测应该也是重写了子类的方法然后调用 `willChangeValueForKey` 和 `didChangeValueForKey` 。
 
