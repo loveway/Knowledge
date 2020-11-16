@@ -371,7 +371,7 @@ void mm_setName(id self, SEL _cmd, NSString *name) {
 
 tempArray 变成了 NSKeyValueNotifyingMutableArray 这个类型，同理上面的对象类型，我们可以猜测应该也是重写了子类的方法然后调用 `willChangeValueForKey` 和 `didChangeValueForKey` 。
 
-最后，关于 KVO 的内容基本就到这里了，你有可能会感觉 KVO 这么繁琐，我得 add、remove 一对操作就为了监听一个属性，有没有更加简便的方式呢？答案是有的，有情趣的童鞋可以去了解下 [ReactiveCocoa](https://github.com/ReactiveCocoa/ReactiveCocoa)，看看它是如何优雅的实现监听的。
+最后，关于 KVO 的内容基本就到这里了，你有可能会感觉 KVO 这么繁琐，我得 add、remove 一对操作就为了监听一个属性，有没有更加简便的方式呢？答案是有的，有兴趣的童鞋可以去了解下 [ReactiveCocoa](https://github.com/ReactiveCocoa/ReactiveCocoa)，看看它是如何优雅的实现监听的。
 
 Reference：
 > [Key-Value Observing Implementation Details](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueObserving/Articles/KVOImplementation.html)
