@@ -184,6 +184,3 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
 
 所以说到现在，一个 NSObject 对象在内存中占多少个字节相信你已经明白了。
 
-Reference:
-> [iOS KVC KVO 总结](http://coderlin.coding.me/2019/06/21/iOS-KVC-KVO/)
-> 
