@@ -44,7 +44,7 @@ stu.name = @"mm";
 这一部分就省略了，当你自己写出来setter、getter 方法，就会覆盖编译器帮你生成的，以你的为主。
 
 ## @dynamic
-@dynamic 相当于告诉编译器不要生成 setter、getter 方法，我自己会实现，编译的时候不要给我警告。@synthesize 和 @dynamic 是对立的，同一属性两者互斥
+@dynamic 相当于告诉编译器不要生成 setter、getter 方法，我自己会实现，编译的时候不要给我警告，此时编译时候没有问题，但是到最后运行程序的时候如果你自己还是没有实现 setter、getter 方法会报错。@synthesize 和 @dynamic 是对立的，同一属性两者互斥
 ```objc
 @implementation MMStudent
 @dynamic name;
