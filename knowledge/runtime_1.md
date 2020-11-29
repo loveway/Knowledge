@@ -1,5 +1,6 @@
 # 深入了解 iOS 中的 runtime（一）isa、objc_object、objc_class 
 
+![](https://github.com/loveway/Knowledge/blob/master/image/runtime_isa.png?raw=true)
 ## isa
 拿实例对象举例，我们都知道在 Objective-C 中，对象其实是一个结构体，在 64 位之前，对象的定义如下（以下源码分析基于 [objc4-781](https://opensource.apple.com//source/objc4/) ）
 ```c
@@ -129,6 +130,8 @@ int main(int argc, const char * argv[]) {
 ```
 输出是
 
+![print](https://github.com/loveway/Knowledge/blob/master/image/runtime_1_print.png?raw=true)
+
 那么问题来了，为什么两者输出的是不一样呢，p 这个对象分配出来以后到底是多少呢？带着这个疑问我们看一下 runtime 的源码，我们在 `objc-runtime-new.mm` 这个文件中看到 `_objc_rootAllocWithZone` 这个方法
 ```c
 id
@@ -176,6 +179,8 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
 ```
 可以看到里面有一句 `if (size < 16) size = 16` ，也就是说系统规定的分配出来的对象的最小值是 16（注释也写了 *CF requires all objects be at least 16 bytes*），
 所以说 malloc_size 方法会输出 16，但是其实 MMPerson 对象只占用了 8 个字节（因为他的实例对象 p 里面只有一个成员变量 isa，占用 8 个字节），MMPerson 实例对象的的内存分配如下
+
+![MMPerson 实例对象的内存分配](https://github.com/loveway/Knowledge/blob/master/image/runtime_malloc.png?raw=true)
 
 所以说到现在，一个 NSObject 对象在内存中占多少个字节相信你已经明白了。
 
