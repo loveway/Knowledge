@@ -177,6 +177,8 @@ struct MMPerson_IMPL {
 ```
 也就是 MMPerson 的实例对象的内存分配如下图
 
+![](https://github.com/loveway/Knowledge/blob/master/image/MMPerson_2.png?raw=true)
+
 这样我们就理解了，原来底层 MMPerson 对象里面存放着 isa、_age、_number，isa 占用八个字节，两个 int 分别占用四个字节，所以当 MMPerson 中存在两个成员变量（int）时候，`class_getInstanceSize` 输出 16，`malloc_size` 输出 16，但是如果只有一个int 成员变量时候 `class_getInstanceSize` 应该输出 12 啊，三个 int 成员变量时候也应该输出 20 啊，为啥会输出 16 和 24 呢?
 
 其实根本原因是因为 **内存对齐**！也就是说，MMPerson 对象的本质是一个结构体，结构体自身存在着内存对齐，以其中最大的成员为基准，以 MMPerson 添加一个 `_age` 成员变量为例，此时 isa 占用 8 个字节，`_age` 本来只需要占用 4 个字节，但是由于对齐为最大 8 的倍数， 所以 `class_getInstanceSize` 输出 16。而同样，iOS 系统分配也存在着内存对齐，原则是 16 的倍数，所以当添加三个成员变量的时候，`malloc_size` 输出是 32。
