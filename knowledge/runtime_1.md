@@ -100,7 +100,7 @@ objc_object::ISA()
 ```
 以上就是 isa 的所有信息，可以看出的是 isa 优化以后存储的信息更多了，不仅仅有类对象（元类对象）地址，还有 has_assoc、has_cxx_dtor 等更多的信息。
 
-## objc_object
+## 对象的本质
 我们来看下面这个例子
 ```objc
 // 定义一个 MMPerson 类
@@ -183,4 +183,58 @@ _class_createInstanceFromZone(Class cls, size_t extraBytes, void *zone,
 ![MMPerson 实例对象的内存分配](https://github.com/loveway/Knowledge/blob/master/image/runtime_malloc.png?raw=true)
 
 所以说到现在，一个 NSObject 对象在内存中占多少个字节相信你已经明白了。
+
+了解了上面的基础知识以后我们来将 MMPerson 中添加两个成员变量，如下
+```objc
+@interface MMPerson : NSObject
+{
+    @public
+    int _age;
+    int _number;
+}
+@end
+```
+`main.m` 如下
+```objc
+#import <Foundation/Foundation.h>
+#import "MMPerson.h"
+#import <objc/runtime.h>
+#import <malloc/malloc.h>
+
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        MMPerson *p = [[MMPerson alloc] init];
+    }
+    return 0;
+}
+```
+我们来将 main.m 转成 c++ 文件来窥探下 MMPerson 内部结构，输入以下命令
+```bash
+xcrun -sdk iphoneos clang -arch arm64 -rewrite-objc main.m -o main-arm64.cpp
+```
+可以在 30000 多行的 c++ 代码中找到
+```c
+struct NSObject_IMPL {
+	Class isa;
+};
+
+...
+struct MMPerson_IMPL {
+	struct NSObject_IMPL NSObject_IVARS;
+	int _age;
+	int _number;
+};
+```
+也就相当于 MMPerson 的底层实现是
+```C
+struct MMPerson_IMPL {
+	Class isa;
+	int _age;
+	int _number;
+};
+```
+也就是 MMPerson 的实例对象的内存分配如下图
+
+也就是说，实例对象的本质其实就是一个 struct 结构体，里面放着 isa 和一些其他成员变量，或者可以说是里面放着其他成员变量（isa 是一种特殊的成员变量）
+
 
