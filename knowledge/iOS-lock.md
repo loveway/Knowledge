@@ -150,6 +150,9 @@ pthread_mutex_lock(&mutex);//申请锁
  //code
 pthread_mutex_trylock(&mutex);//尝试锁
 pthread_mutex_unlock(&mutex);//释放锁
+// 销毁属性
+pthread_mutexattr_destroy(&attr);
+
 ```
 
 ### 5. NSLock
