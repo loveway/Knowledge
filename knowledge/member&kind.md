@@ -1,6 +1,6 @@
 # iOS 中的内省方法：isMemberOfClass 与 isKindOfClass 
 ## 1、iOS 中的内省方法
-OC 作为一门面向对象的强大语言，具有内省 [Introspection](https://developer.apple.com/library/archive/documentation/General/Conceptual/CocoaEncyclopedia/Introspection/Introspection.html) 这样一个强大的特性，一些常用的内省方法如下
+OC 作为一门面向对象的强大语言，具有内省 [Introspection](https://developer.apple.com/library/archive/documentation/General/Conceptual/CocoaEncyclopedia/Introspection/Introspection.html) 这样一个强大的特性，也是运行时获取其类型的能力，一些常用的内省方法如下
 ```objc
 + (Class)superclass; // 获取类继承链上的父类
 - (Class)superclass; // 获取实例的类继承链上的父类
