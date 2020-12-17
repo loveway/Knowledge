@@ -18,6 +18,9 @@ OC 作为一门面向对象的强大语言，具有内省 [Introspection](https:
 - (BOOL)conformsToProtocol:(Protocol *)protocol; // 实例的类是否遵循指定协议并实现协议的@required方法
 ```
 我们常用的就是 isMemberOfClass 和 isKindOfClass，经常容易搞混，但是当我们研究明白其本质后，就会发现很简单，在此之前我们先贴上一张经典的 runtime 的图
+
+![](https://github.com/loveway/Knowledge/blob/master/image/runtime_isa.png?raw=true)
+
 ## 2、isMemberOfClass
 isMemberOfClass 有实例方法（-）和类方法（+）两种，基于 runtime 源码 `objc-781`，在 `NSObject.mm` 中我们会发现这两个方法的实现是开源的，其实现如下
 ```objc
