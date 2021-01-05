@@ -12,6 +12,7 @@
 | runtime | iOS 中的内省方法 | [iOS 中的内省方法：isMemberOfClass 与 isKindOfClass](https://github.com/loveway/Knowledge/blob/master/knowledge/member%26kind.md) | 
 | runtime | iOS 中的 runtime | [深入了解 iOS 中的 runtime（一）isa、objc_object、objc_class](https://github.com/loveway/Knowledge/blob/master/knowledge/runtime_1.md) | 
 | layout  | layout | [setNeedsLayout、layoutIfNeeded、layoutSubviews](https://github.com/loveway/Knowledge/blob/master/knowledge/iOS-layout.md)|
+| life circle  |  生命周期 | [UIViewController 的生命周期](https://github.com/loveway/Knowledge/blob/master/knowledge/iOS_life_circle.md)|
 | 原理 | iOS 签名原理| [iOS 证书签名原理](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/iOS-sign-principle.md) | 
 | 原理 | iOS 事件机制| [iOS 事件机制](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/iOS-responder-chain.md)  | 
 | 基础 | iOS | [iOS 中的 @property、@synthesize、@dynamic](https://github.com/loveway/Knowledge/blob/master/knowledge/iOS-%40property-%40synthesize-%40dynamic.md)  |
