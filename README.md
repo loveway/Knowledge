@@ -7,7 +7,7 @@
 | 多线程 | 一、如何终止正在运行的工作线程？<br>二、iOS 下如何实现指定线程数目的线程池 | [ iOS 的多线程的一些问题解答](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/iOS-multi-threading-Q&A.md) |
 | 多线程 | iOS 中的锁 | [iOS 中的锁](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/iOS-lock.md) | 
 | runtime | KVC | [iOS 中 KVC](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/KVC.md) | 
-| runtime | KVC | [setValue:forKey: 和 setObject:forKey:](https://github.com/loveway/Knowledge/blob/master/knowledge/setValue%20%E5%92%8C%20setObject.md) | 
+| runtime | KVC | [setNilValueForKey:、setValue:forKey: 和 setObject:forKey:](https://github.com/loveway/Knowledge/blob/master/knowledge/setValue_setObject.m) | 
 | runtime | KVO | [iOS 中 KVO](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/KVO.md) | 
 | runtime | iOS 对象的本质 | [iOS 中对象的本质](https://github.com/loveway/Knowledge/blob/master/knowledge/iOS_object_essence.md) | 
 | runtime | iOS 中的内省方法 | [iOS 中的内省方法：isMemberOfClass 与 isKindOfClass](https://github.com/loveway/Knowledge/blob/master/knowledge/member%26kind.md) | 
