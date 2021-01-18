@@ -6,7 +6,7 @@
 | 多线程 | 一、iOS 中的多线程编程有哪几种？<br>二、进程和线程的区别？<br>三、GCD 的原理是什么？<br>四、GCD 中 group 的优点，及串行，并行队列是什么？<br>五、NSOperation 和 GCD 的区别？<br>六、并发与并行？<br>七、进程之间通信？线程之间通信？ | [关于 iOS 的多线程](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/iOS-multi-threading.md) |
 | 多线程 | 一、如何终止正在运行的工作线程？<br>二、iOS 下如何实现指定线程数目的线程池 | [ iOS 的多线程的一些问题解答](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/iOS-multi-threading-Q&A.md) |
 | 多线程 | iOS 中的锁 | [iOS 中的锁](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/iOS-lock.md) | 
-| 多线程 | iOS 中的锁 | [iOS 中的读写锁 pthread_rwlock](https://github.com/loveway/Knowledge/blob/master/knowledge/pthread_rwlock.) | 
+| 多线程 | iOS 中的锁 | [iOS 中的读写锁 pthread_rwlock](https://github.com/loveway/Knowledge/blob/master/knowledge/pthread_rwlock.md) | 
 | runtime | KVC | [iOS 中 KVC](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/KVC.md) | 
 | runtime | KVC | [setNilValueForKey:、setValue:forKey: 和 setObject:forKey:](https://github.com/loveway/Knowledge/blob/master/knowledge/setValue_setObject.md) | 
 | runtime | KVO | [iOS 中 KVO](https://github.com/loveway/iOS-Knowledge/blob/master/knowledge/KVO.md) | 
