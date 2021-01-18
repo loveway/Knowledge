@@ -61,9 +61,9 @@ MMPerson 类里面有 age、height 和 name 属性，分别是是 int、float �
 @end
 ```
 我们可以很清晰的看到，对于 NSMutableDictionary 如果我们调用了 `setValue:forKey:` 这个方法，有两种情况
-* 1. 传值为 nil
+* 传值为 nil
   会调用 `-removeObjectForKey:` 这个方法，也就是移除这个 key 以及对应的 value
-* 2. 传值不为 nil
+* 传值不为 nil
   会调用 `-setObject:forKey:` 这个方法
 
 我们再来看一下 `-setObject:forKey:` 这个方法
