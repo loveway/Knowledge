@@ -57,4 +57,6 @@
 ```
 最后测试结果如下
 
+![](https://github.com/loveway/Knowledge/blob/master/image/pthread_rwlock.png?raw=true)
+
 我们可以看到，只会出现同时读的情况，不会出现同时写的情况。
