@@ -24,11 +24,9 @@
     dispatch_queue_t queue = dispatch_get_global_queue(0, 0);
     for (int i = 0; i < 10; i++) {
         dispatch_async(queue, ^{
-            NSLog(@"——--%@", [NSThread currentThread]);
             [self read];
         });
         dispatch_async(queue, ^{
-            NSLog(@"——--%@", [NSThread currentThread]);
             [self write];
         });
     }
