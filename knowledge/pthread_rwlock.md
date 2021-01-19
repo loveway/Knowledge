@@ -56,7 +56,7 @@
 ```
 最后测试结果如下
 
-![](https://github.com/loveway/Knowledge/blob/master/image/pthread_rwlock.png?raw=true)
+![](https://github.com/loveway/Knowledge/blob/master/image/pthread_rwlock_1.png?raw=true)
 
 我们可以看到，只会出现同时读的情况，不会出现同时写的情况。
 
@@ -125,6 +125,8 @@ for (int i = 0; i < 5; i++) {
 ```
 验证结果如下
 
+![](https://github.com/loveway/Knowledge/blob/master/image/pthread_rwlock_2.png?raw=true)
+
 
 
 #### 2、使用栅栏函数 dispatch_barrier_async
@@ -182,5 +184,8 @@ for (int i = 0; i < 10; i++) {
 }
 ```
 测试结果如下
+
+![](https://github.com/loveway/Knowledge/blob/master/image/pthread_rwlock_3.png?raw=true)
+
 
 我们可以看到，达到了多读单写、读写互斥的目的。
