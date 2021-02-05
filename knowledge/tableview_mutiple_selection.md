@@ -2,6 +2,8 @@
 
 在我们平时开发中，经常会遇到有个列表可以多选，然后选中后回到上一页，并把选中的数据带过去，或者把选中的结果提交，如下图
 
+![](https://github.com/loveway/Knowledge/blob/master/image/tableview_selection.gif?raw=true)
+
 经常我们的做法是在数据源中做操作，比如将一个 model 添加一个 isSelected 属性，选中就置为 YES，然后刷新，最后提交时候遍历数据源，找到 isSelected 为 YES 的再做处理，如下
 
 ```objc
