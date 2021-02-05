@@ -21,3 +21,5 @@
 | 网络 | HTTPS 协议 | [漫画：什么是 HTTPS 协议](https://mp.weixin.qq.com/s/1ojSrhc9LZV8zlX6YblMtA)  |
 | 网络 | HTTP | [面试官，不要再问我三次握手和四次挥手](https://mp.weixin.qq.com/s/xBbb_LXlXsbNtRLa0IDKOQ)  |
 | 算法 | iOS 实现算法 | [iOS 实现删除链表中的倒数第 k 个节点](https://github.com/loveway/Knowledge/blob/master/knowledge/delete_node_k.md)  |
+| 小技巧 | iOS | [iOS 中 UITableView 实现多选的一种优雅的方案](https://github.com/loveway/Knowledge/blob/master/knowledge/tableview_mutiple_selection.md)  |
+
